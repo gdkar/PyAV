@@ -64,12 +64,16 @@ cdef class AudioLayout(object):
             return
 
         cdef uint64_t c_layout
+        cdef AudioLayout other
         if isinstance(layout, int):
             if layout < 0 or layout > 8:
                 raise ValueError('no layout with %d channels' % layout)
             c_layout = default_layouts[layout]
         elif isinstance(layout, basestring):
             c_layout = lib.av_get_channel_layout(layout)
+        elif isinstance(layout, AudioLayout):
+            other = layout
+            c_layout = other.layout
         else:
             raise TypeError('layout must be str or int')
 
