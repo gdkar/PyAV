@@ -1,5 +1,5 @@
-from av.audio.format cimport get_audio_format
-from av.audio.layout cimport get_audio_layout
+from av.audio.format cimport AudioFormat, get_audio_format
+from av.audio.layout cimport AudioLayout, get_audio_layout
 from av.audio.plane cimport AudioPlane
 from av.utils cimport err_check
 
@@ -23,7 +23,12 @@ cdef class AudioFrame(Frame):
     def __cinit__(self, format='s16', layout='stereo', samples=0, align=True):
         if format is _cinit_bypass_sentinel:
             return
-        raise NotImplementedError()
+        self._init(
+            AudioFormat(format).sample_fmt,
+            AudioLayout(layout).layout,
+            samples,
+            align,
+        )
 
     cdef _init(self, lib.AVSampleFormat format, uint64_t layout, unsigned int nb_samples, bint align):
 
@@ -108,20 +113,28 @@ cdef class AudioFrame(Frame):
         def __get__(self):
             return self.ptr.sample_rate
 
-    def to_nd_array(self, **kwargs):
-      """Get a numpy array of this frame.
-      Any ``**kwargs`` are passed to :meth:`AudioFrame.reformat`.
-      """
+    @classmethod
+    def from_ndarray(cls, array):
 
+        # TODO: We could stand to be more accepting.
+        if array.ndim != 1:
+            raise ValueError('array must be one dimensional (i.e. mono audio)')
 
-      # map avcodec type to numpy type
-      try:
-        type = {
-          's16p':'<i2'
-          }[self.format.name]
-      except:
-        raise AssertionError("Don't know how to convert data type", self.format.name)
+        if array.dtype == 'uint8':
+            format = 'u8'
+        elif array.dtype == 'int16':
+            format = 's16'
+        elif array.dtype == 'int32':
+            format = 's32'
+        elif array.dtype == 'int64':
+            format = 's64'
+        else:
+            raise ValueError('array dtype must be one of: uint8, int16, int32, int64')
 
-      # convert and return data
-      import numpy as np
-      return np.vstack( map( lambda x: np.frombuffer(x, np.dtype(type)), self.planes))
+        frame = cls(format, 'mono', array.shape[0])
+        frame.planes[0].update(array)
+
+        return frame
+            
+        
+        
