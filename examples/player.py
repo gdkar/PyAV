@@ -1,3 +1,4 @@
+from __future__ import division
 import argparse
 import ctypes
 import os
@@ -10,32 +11,44 @@ from glproxy import gl
 
 import av
 
-WIDTH = 960
-HEIGHT = 540
+#WIDTH = 960
+#HEIGHT = 540
 
 
-class PlayerGLWidget(Q.GLWidget):
-
+class PlayerGLWidget(Q.OpenGLWidget):
+    def __init__(self):
+        super(self.__class__,self).__init__()
+        fmt = Q.SurfaceFormat.defaultFormat()
+        fmt.setSamples(8)
+        self.setFormat(fmt)
+        self.width  = 0;
+        self.height = 0;
+        self.xratio  = 0;
+        self.yratio  = 0;
     def initializeGL(self):
+        self.context = Q.QOpenGLContext.currentContext()
+
         print 'initialize GL'
         gl.clearColor(0, 0, 0, 0)
-
         gl.enable(gl.TEXTURE_2D)
 
         # gl.texEnv(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.DECAL)
         self.tex_id = gl.genTextures(1)
         gl.bindTexture(gl.TEXTURE_2D, self.tex_id)
-        gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-        gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+        gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
         print 'texture id', self.tex_id
 
     def setImage(self, w, h, img):
+        gl.bindTexture(gl.TEXTURE_2D,self.tex_id)
         gl.texImage2D(gl.TEXTURE_2D, 0, 3, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, img)
+        self.width  = w
+        self.height = h
 
     def resizeGL(self, w, h):
         print 'resize to', w, h
-        gl.viewport(0, 0, w, h)
+        gl.viewport(0,0,w,h)
         # gl.matrixMode(gl.PROJECTION)
         # gl.loadIdentity()
         # gl.ortho(0, w, 0, h, -10, 10)
@@ -44,6 +57,7 @@ class PlayerGLWidget(Q.GLWidget):
     def paintGL(self):
         # print 'paint!'
         gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.bindTexture(gl.TEXTURE_2D,self.tex_id)
         with gl.begin('polygon'):
             gl.texCoord(0, 0); gl.vertex(-1,  1)
             gl.texCoord(1, 0); gl.vertex( 1,  1)
@@ -58,20 +72,27 @@ parser.add_argument('path')
 args = parser.parse_args()
 
 
-def _iter_images():
-    video = av.open(args.path, format=args.format)
-    stream = next(s for s in video.streams if s.type == b'video')
-    for packet in video.demux(stream):
-        for frame in packet.decode():
-            yield frame.reformat(frame.width, frame.height, 'rgb24')
+class  _iter_images():
+    def __init__(self):
+        self.video = av.open(args.path, format=args.format)
+        self.stream = next(s for s in self.video.streams if s.type == b'video')
+        self.demuxd = self.video.demux(self.stream)
+        self.frames=[]
+        while not len(self.frames):
+            self.frames = next(self.demuxd).decode()
+    def next(self):
+        if not self.frames:
+            self.frames = next(self.demuxd).decode()
+        frame = self.frames.pop(0)
+        return frame.reformat(frame.width,frame.height,'rgb24')
 
 image_iter = _iter_images()
 
 app = Q.Application([])
 
 glwidget = PlayerGLWidget()
-glwidget.setFixedWidth(WIDTH)
-glwidget.setFixedHeight(HEIGHT)
+#glwidget.setFixedWidth(image_iter.frames[0].width)
+#glwidget.setFixedHeight(image_iter.frames[0].height)
 glwidget.show()
 glwidget.raise_()
 
@@ -88,8 +109,11 @@ def on_timeout(*args):
 
     frame = next(image_iter)
     ptr = ctypes.c_void_p(frame.planes[0].ptr)
+    #glwidget.setFixedWidth(frame.width)
+    #glwidget.setFixedHeight(frame.height)
+
     glwidget.setImage(frame.width, frame.height, ptr)
-    glwidget.updateGL()
+    glwidget.update()
 
     count += 1
     elapsed = time.time() - start_time
