@@ -1,10 +1,10 @@
 """
 Note this example only really works accurately on constant frame rate media. 
 """
-from PyQt5 import QtGui
+from PyQt5 import QtWidgets,QtGui,Qt
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-
+import PyQt5.Qt;
 import sys
 import av
 
@@ -13,33 +13,25 @@ AV_TIME_BASE = 1000000
 
 def pts_to_frame(pts, time_base, frame_rate, start_time):
     return int(pts * time_base * frame_rate) - int(start_time * time_base * frame_rate)
-
 def get_frame_rate(stream):
-    
     if stream.average_rate.denominator and stream.average_rate.numerator:
         return float(stream.average_rate)
     if stream.time_base.denominator and stream.time_base.numerator:
         return 1.0/float(stream.time_base)
     else:
         raise ValueError("Unable to determine FPS")
-    
 def get_frame_count(f, stream):
-    
     if stream.frames:
         return stream.frames
     elif stream.duration:
         return pts_to_frame(stream.duration, float(stream.time_base), get_frame_rate(stream), 0)
     elif f.duration:
         return pts_to_frame(f.duration, 1/float(AV_TIME_BASE), get_frame_rate(stream), 0)
-        
     else:
         raise ValueError("Unable to determine number for frames")
-
 class FrameGrabber(QtCore.QObject):
-    
     frame_ready = QtCore.pyqtSignal(object, object)
     update_frame_range = QtCore.pyqtSignal(object)
-    
     def __init__(self, parent =None):
         super(FrameGrabber, self).__init__(parent)
         self.file = None
@@ -52,47 +44,31 @@ class FrameGrabber(QtCore.QObject):
         
         self.rate = None
         self.time_base = None
-        
     def next_frame(self):
-        
         frame_index = None
-        
         rate = self.rate
         time_base = self.time_base
-        
         self.pts_seen = False
-        
         for packet in self.file.demux(self.stream):
             #print "    pkt", packet.pts, packet.dts, packet
             if packet.pts:
                 self.pts_seen = True
-            
             for frame in packet.decode():
-                
                 if frame_index is None:
-                    
                     if self.pts_seen:
                         pts = frame.pts
                     else:
                         pts = frame.dts
-                    
                     if not pts is None:
                         frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
-                        
                 elif not frame_index is None:
                     frame_index += 1
-                
-                
                 yield frame_index, frame
-                
-                
     @QtCore.pyqtSlot(object)
     def request_frame(self, target_frame):
-        
         frame = self.get_frame(target_frame)
         if not frame:
             return
-        
         rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
         #print rgba.to_image().save("test.png")
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
@@ -100,30 +76,20 @@ class FrameGrabber(QtCore.QObject):
         self.frame = bytearray(rgba.planes[0])
         bytesPerPixel  =3 
         img = QtGui.QImage(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, QtGui.QImage.Format_RGB888)
-        
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
-
         #pixmap = QtGui.QPixmap.fromImage(img)
         self.frame_ready.emit(img, target_frame)
-        
     def get_frame(self, target_frame):
-
         if target_frame != self.active_frame:
             return
         print 'seeking to', target_frame
-        
         seek_frame = target_frame
-
         rate = self.rate
         time_base = self.time_base
-        
         frame = None
         reseek = 250
-        
         original_target_frame_pts = None
-        
         while reseek >= 0:
-            
             # convert seek_frame to pts
             target_sec = seek_frame * 1/rate
             target_pts = int(target_sec / time_base) + self.start_time
@@ -261,18 +227,18 @@ class FrameGrabber(QtCore.QObject):
         
         
         
-class DisplayWidget(QtGui.QLabel):
+class DisplayWidget(QtWidgets.QLabel):
     def __init__(self, parent=None):
         super(DisplayWidget, self).__init__(parent)
         #self.setScaledContents(True)
         self.setMinimumSize(1920/10, 1080/10)
         
-        size_policy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         size_policy.setHeightForWidth(True)
         
         self.setSizePolicy(size_policy)
         
-        self.setAlignment(Qt.AlignHCenter| Qt.AlignBottom)
+#        self.setAlignment(PyQt5.Qt.QAlignHCenter| PyQt5.Qt.QAlignBottom)
 
         self.pixmap = None
         self.setMargin(10)
@@ -300,7 +266,7 @@ class DisplayWidget(QtGui.QLabel):
         return QtCore.QSize(1920/2.5,1080/2.5)
         
 
-class VideoPlayerWidget(QtGui.QWidget):
+class VideoPlayerWidget(QtWidgets.QWidget):
     
     request_frame = QtCore.pyqtSignal(object)
     
@@ -309,10 +275,10 @@ class VideoPlayerWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         super(VideoPlayerWidget, self).__init__(parent)
         self.display = DisplayWidget()
-        self.timeline = QtGui.QScrollBar(Qt.Horizontal)
+        self.timeline = QtWidgets.QScrollBar(Qt.Horizontal)
         self.frame_grabber = FrameGrabber()
         
-        self.frame_control = QtGui.QSpinBox()
+        self.frame_control = QtWidgets.QSpinBox()
         self.frame_control.setFixedWidth(100)
 
         self.timeline.valueChanged.connect(self.frame_changed)
@@ -329,11 +295,11 @@ class VideoPlayerWidget(QtGui.QWidget):
         self.frame_grabber.moveToThread(self.frame_grabber_thread)
         self.frame_grabber_thread.start()
         
-        control_layout = QtGui.QHBoxLayout()
+        control_layout = QtWidgets.QHBoxLayout()
         control_layout.addWidget(self.frame_control)
         control_layout.addWidget(self.timeline)
         
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.display)
         layout.addLayout(control_layout)
         self.setLayout(layout)
@@ -410,7 +376,7 @@ class VideoPlayerWidget(QtGui.QWidget):
         
 
 if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     window = VideoPlayerWidget()
     test_file = sys.argv[1]
     window.set_file(test_file)                      
