@@ -100,5 +100,5 @@ class GLProxy(ModuleProxy):
         
 
 gl = GLProxy('gl', OpenGL.GL)
-glu = ModuleProxy('glu', OpenGL.GLU)
-glut = ModuleProxy('glut', OpenGL.GLUT)
+#glu = ModuleProxy('glu', OpenGL.GLU)
+#glut = ModuleProxy('glut', OpenGL.GLUT)

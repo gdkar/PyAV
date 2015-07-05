@@ -10,7 +10,7 @@ default: build
 
 
 build:
-	CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) python setup.py build_ext --inplace --debug
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" python setup.py build_ext --inplace --debug
 
 cythonize:
 	python setup.py cythonize
