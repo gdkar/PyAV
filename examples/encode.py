@@ -27,66 +27,44 @@ frame_count = 0
 
 
 for packet in input_file.demux([s for s in (input_video_stream, input_audio_stream) if s]):
-
-
-    if args.verbose:
-        print 'in ', packet
-
+    if args.verbose: print('in ', packet)
     for frame in packet.decode():
-        
         if args.verbose:
-            print '\t%s' % frame
-
+            print('\t%s' % frame)
         if packet.stream.type == b'video':
             if frame_count % 10 == 0:
                 if frame_count:
-                    print
-                print ('%03d:' % frame_count), 
+                    print()
+                print('%03d:' % frame_count), 
             sys.stdout.write('.')
             sys.stdout.flush()
-
             frame_count += 1
-
         # Signal to generate it's own timestamps.
         frame.pts = None
-        
         stream = output_audio_stream if packet.stream.type == b'audio' else output_video_stream
         output_packets = [output_audio_stream.encode(frame)]
-        while output_packets[-1]:
-            output_packets.append(output_audio_stream.encode(None))
-            
+        while output_packets[-1]: output_packets.append(output_audio_stream.encode(None))
         for p in output_packets:
             if p:
                 if args.verbose:
-                    print 'OUT', p
+                    print('OUT', p)
                 output_file.mux(p)
-        
-    if frame_count >= 100:
-        break
-
+    if frame_count >= 100:break
 print '-' * 78
-
 # Finally we need to flush out the frames that are buffered in the encoder.
 # To do that we simply call encode with no args until we get a None returned
 if output_audio_stream:
     while True:
         output_packet = output_audio_stream.encode(None)
         if output_packet:
-            if args.verbose:
-                print '<<<', output_packet
+            if args.verbose:print('<<<', output_packet)
             output_file.mux(output_packet)
-        else:
-            break
-
+        else:break
 if output_video_stream:
     while True:
         output_packet = output_video_stream.encode(None)
         if output_packet:
-            if args.verbose:
-                print '<<<', output_packet
+            if args.verbose:print('<<<', output_packet)
             output_file.mux(output_packet)
-        else:
-            break
-
+        else:break
 output_file.close()
-
