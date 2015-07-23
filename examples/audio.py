@@ -45,29 +45,20 @@ fifo_count = 0
 sample_count = 0
 
 for i, packet in enumerate(container.demux(stream)):
-
     for frame in packet.decode():
-
         read_count += 1
         print '>>>> %04d' % read_count, frame
-        if args.data:
-            print_data(frame)
-
+        if args.data:print_data(frame)
         frames = [frame]
-
         if resampler:
             for i, frame in enumerate(frames):
                 frame = resampler.resample(frame)
                 print 'RESAMPLED', frame
-                if args.data:
-                    print_data(frame)
+                if args.data:print_data(frame)
                 frames[i] = frame
-
         if fifo:
-
             to_process = frames
             frames = []
-
             for frame in to_process:
                 fifo.write(frame)
                 while frame:
@@ -75,10 +66,8 @@ for i, packet in enumerate(container.demux(stream)):
                     if frame:
                         fifo_count += 1
                         print '|||| %04d' % fifo_count, frame
-                        if args.data:
-                            print_data(frame)
+                        if args.data:print_data(frame)
                         frames.append(frame)
-
         if frames and args.play:
             if not ffplay:
                 cmd = ['ffplay',
@@ -90,12 +79,8 @@ for i, packet in enumerate(container.demux(stream)):
                 print 'PLAY', ' '.join(cmd)
                 ffplay = subprocess.Popen(cmd, stdin=subprocess.PIPE)
             try:
-                for frame in frames:
-                    ffplay.stdin.write(frame.planes[0].to_bytes())
+                for frame in frames:ffplay.stdin.write(frame.planes[0].to_bytes())
             except IOError as e:
                 print e
                 exit()
-
-        if args.count and read_count >= args.count:
-            exit()
-
+        if args.count and read_count >= args.count:exit()

@@ -7,7 +7,7 @@ cimport libav as lib
 from av.audio.stream cimport AudioStream
 from av.packet cimport Packet
 from av.subtitles.stream cimport SubtitleStream
-from av.utils cimport err_check, avdict_to_dict, avrational_to_faction, to_avrational, media_type_to_string
+from av.utils cimport err_check, avdict_to_dict, avrational_to_fraction, to_avrational, media_type_to_string
 from av.video.stream cimport VideoStream
 
 
@@ -21,12 +21,9 @@ cdef Stream build_stream(Container container, lib.AVStream *c_stream):
     called.
 
     """
-    
     # This better be the right one...
     assert container.proxy.ptr.streams[c_stream.index] == c_stream
-
     cdef Stream py_stream
-
     if c_stream.codec.codec_type == lib.AVMEDIA_TYPE_VIDEO:
         py_stream = VideoStream.__new__(VideoStream, _cinit_bypass_sentinel)
     elif c_stream.codec.codec_type == lib.AVMEDIA_TYPE_AUDIO:
@@ -35,53 +32,35 @@ cdef Stream build_stream(Container container, lib.AVStream *c_stream):
         py_stream = SubtitleStream.__new__(SubtitleStream, _cinit_bypass_sentinel)
     else:
         py_stream = Stream.__new__(Stream, _cinit_bypass_sentinel)
-
     py_stream._init(container, c_stream)
     return py_stream
-
-
 cdef class Stream(object):
-    
     def __cinit__(self, name):
-        if name is _cinit_bypass_sentinel:
-            return
+        if name is _cinit_bypass_sentinel:return
         raise RuntimeError('cannot manually instatiate Stream')
-
     cdef _init(self, Container container, lib.AVStream *stream):
         
         self._container = container.proxy
         self._weak_container = PyWeakref_NewRef(container, None)
         self._stream = stream
         self._codec_context = stream.codec
-        
         self.metadata = avdict_to_dict(stream.metadata)
-        
         # This is an input container!
         if self._container.ptr.iformat:
-
             # Find the codec.
             self._codec = lib.avcodec_find_decoder(self._codec_context.codec_id)
-            if self._codec == NULL:
-                return
-            
+            if self._codec == NULL:return
             # Open the codec.
-            try:
-                err_check(lib.avcodec_open2(self._codec_context, self._codec, &self._codec_options))
+            try:err_check(lib.avcodec_open2(self._codec_context, self._codec, &self._codec_options))
             except:
                 # Signal that we don't need to close it.
                 self._codec = NULL
                 raise
-            
         # This is an output container!
-        else:
-            self._codec = self._codec_context.codec
-
+        else:self._codec = self._codec_context.codec
     def __dealloc__(self):
-        if self._codec:
-            lib.avcodec_close(self._codec_context)
-        if self._codec_options:
-            lib.av_dict_free(&self._codec_options)
-
+        if self._codec:lib.avcodec_close(self._codec_context)
+        if self._codec_options:lib.av_dict_free(&self._codec_options)
     def __repr__(self):
         return '<av.%s #%d %s/%s at 0x%x>' % (
             self.__class__.__name__,
@@ -114,23 +93,21 @@ cdef class Stream(object):
         def __get__(self):
             if self._codec and lib.av_get_profile_name(self._codec, self._codec_context.profile):
                 return lib.av_get_profile_name(self._codec, self._codec_context.profile)
-            else:
-                return None
-
+            else:return None
     property index:
         def __get__(self): return self._stream.index
 
     property time_base:
-        def __get__(self): return avrational_to_faction(&self._stream.time_base)
+        def __get__(self): return avrational_to_fraction(&self._stream.time_base)
 
     property rate:
         def __get__(self):
             if self._codec_context:
-                return self._codec_context.ticks_per_frame * avrational_to_faction(&self._codec_context.time_base)
+                return self._codec_context.ticks_per_frame * avrational_to_fraction(&self._codec_context.time_base)
     
     property average_rate:
         def __get__(self):
-            return avrational_to_faction(&self._stream.avg_frame_rate)
+            return avrational_to_fraction(&self._stream.avg_frame_rate)
 
     property start_time:
         def __get__(self): return self._stream.start_time

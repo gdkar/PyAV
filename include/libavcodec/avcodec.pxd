@@ -236,21 +236,16 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
     )
     
     cdef struct AVPacket:
-
         int64_t pts
         int64_t dts
         uint8_t *data
-        
         int size
         int stream_index
         int flags
-        
         int duration
-        
-        int64_t pos
-
         void (*destruct)(AVPacket*)
-    
+        int64_t pos
+        int64_t convergence_duration
 
     cdef int avcodec_decode_video2(
         AVCodecContext *ctx,

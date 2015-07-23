@@ -25,35 +25,24 @@ cdef class VideoFrame(Frame):
     """
 
     def __cinit__(self, width=0, height=0, format='yuv420p'):
-
-        if width is _cinit_bypass_sentinel:
-            return
-
+        if width is _cinit_bypass_sentinel:return
         cdef lib.AVPixelFormat c_format = lib.av_get_pix_fmt(format)
         if c_format < 0:
             raise ValueError('invalid format %r' % format)
-
         self._init(c_format, width, height)
-
     cdef _init(self, lib.AVPixelFormat format, unsigned int width, unsigned int height):
         cdef int buffer_size
         with nogil:
             self.ptr.width = width
             self.ptr.height = height
             self.ptr.format = format
-
-
             if width and height:
-
                 # Cleanup the old buffer.
                 lib.av_freep(&self._buffer)
-
                 # Get a new one.
                 buffer_size = lib.avpicture_get_size(format, width, height)
                 with gil: err_check(buffer_size)
-
                 self._buffer = <uint8_t *>lib.av_malloc(buffer_size)
-
                 if not self._buffer:
                     with gil: raise MemoryError("cannot allocate VideoFrame buffer")
 
@@ -65,19 +54,13 @@ cdef class VideoFrame(Frame):
                         width,
                         height
                 )
-
         self._init_properties()
-
     cdef int _max_plane_count(self):
         return self.format.ptr.nb_components
-
     cdef _init_properties(self):
         self.format = get_video_format(<lib.AVPixelFormat>self.ptr.format, self.ptr.width, self.ptr.height)
         self._init_planes(VideoPlane)
-
-    def __dealloc__(self):
-        lib.av_freep(&self._buffer)
-
+    def __dealloc__(self): lib.av_freep(&self._buffer)
     def __repr__(self):
         return '<av.%s #%d, %s %dx%d at 0x%x>' % (
             self.__class__.__name__,
