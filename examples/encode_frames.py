@@ -17,24 +17,17 @@ arg_parser.add_argument('inputs', nargs='+')
 arg_parser.add_argument('output', nargs=1)
 args = arg_parser.parse_args()
 
-
 output = av.open(args.output[0], 'w')
 stream = output.add_stream(args.codec, args.rate)
 stream.bit_rate = args.bitrate
 stream.pix_fmt = args.format
-
 for i, path in enumerate(args.inputs):
-
     print os.path.basename(path)
-
     img = cv2.imread(path)
-
     if not i:
         stream.height = args.height or (args.width * img.shape[0] / img.shape[1]) or img.shape[0]
         stream.width = args.width or img.shape[1]
-
     frame = av.VideoFrame.from_ndarray(img, format='bgr24')
     packet = stream.encode(frame)
     output.mux(packet)
-
 output.close()

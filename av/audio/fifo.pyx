@@ -2,7 +2,7 @@ from av.audio.format cimport get_audio_format
 from av.audio.frame cimport alloc_audio_frame
 from av.audio.layout cimport get_audio_layout
 from av.utils cimport err_check
-
+from fractions import Fraction
 
 cdef class AudioFifo:
 
@@ -12,14 +12,14 @@ cdef class AudioFifo:
         lib.av_audio_fifo_free(self.ptr)
         
     def __repr__(self):
-        return '<av.%s nb_samples:%s %dhz %s %s at 0x%x>' % (
-            self.__class__.__name__,
-            self.samples,
-            self.sample_rate,
-            self.channel_layout,
-            self.sample_fmt,
-            id(self),
-        )
+        return '<av.{:s} nb_samples:{} {}hz {:s} {:s} at 0x{:x}'.format(
+                self.__class__.__name__,
+                self.samples,
+                self.rate,
+                self.format,
+                self.layout,
+                id(self)
+                )
      
     def __cinit__(self):
         self.last_pts = lib.AV_NOPTS_VALUE
@@ -111,14 +111,18 @@ cdef class AudioFifo:
             self.pts_offset -= nb_samples
         
         return frame
-    
+    def __len__(self):
+        return self.samples
     property samples:
         """Number of audio samples (per channel) """
         def __get__(self):
-            return lib.av_audio_fifo_size(self.ptr)
+            if self.ptr !=NULL:
+                return lib.av_audio_fifo_size(self.ptr)
+            else:
+                return None
     
     property rate:
         """Sample rate of the audio data. """
         def __get__(self):
-            return self.time_base.den
+            return Fraction(self.time_base.den,self.time_base.num) if self.time_base.num else 0
 

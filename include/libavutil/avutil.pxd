@@ -167,14 +167,46 @@ cdef extern from "libavutil/channel_layout.h" nogil:
     cdef char* av_get_channel_name(uint64_t channel)
     cdef char* av_get_channel_description(uint64_t channel)
 
-
-
-
+    
+cdef extern from "libavutil/fifo.h" nogil:
+    ctypedef struct AVFifoBuffer:
+        uint8_t *buffer
+        uint8_t *rptr
+        uint8_t *wptr
+        uint8_t *end
+        unsigned int rndx
+        unsigned int wndx
+    
+    cdef AVFifoBuffer *av_fifo_alloc(unsigned int size)
+    cdef AVFifoBuffer *av_fifo_alloc_array(size_t nmemb, size_t size)
+    cdef void av_fifo_free(AVFifoBuffer *f)
+    cdef void av_fifo_freep(AVFifoBuffer **f)
+    cdef void av_fifo_reset(AVFifoBuffer *f)
+    cdef int  av_fifo_size(const AVFifoBuffer *f)
+    cdef int  av_fifo_space(const AVFifoBuffer *f)
+    cdef int  av_fifo_generic_read(AVFifoBuffer *f, void *dest, int buf_size, void (*func)(void*,void*,int))
+    cdef int  av_fifo_generic_write(AVFifoBuffer *f, void *dest, int buf_size, void (*func)(void*,void*,int))
+    cdef int  av_fifo_realloc(AVFifoBuffer *f, unsigned int size)
+    cdef int  av_fifo_grow(AVFifoBuffer *f, unsigned int additional_space)
+    cdef void av_fifo_drain(AVFifoBuffer *f, int size)
+cdef inline uint8_t *av_fifo_peek2(const AVFifoBuffer *f, int offs):
+    cdef uint8_t *ptr = f.rptr + offs
+    if ptr >= f.end:
+        ptr = f.buffer + (ptr-f.end)
+    elif ptr < f.buffer:
+        ptr = f.end - (f.buffer-ptr)
+    return ptr
 cdef extern from "libavutil/audio_fifo.h" nogil:
 
     cdef struct AVAudioFifo:
-        pass
-
+        AVFifoBuffer **buf
+        int            nb_buffers
+        int            nb_samples
+        int            allocated_samples
+        int            channels
+        AVSampleFormat sample_fmt
+        int            sample_size
+    
     cdef void av_audio_fifo_free(AVAudioFifo *af)
 
     cdef AVAudioFifo* av_audio_fifo_alloc(
