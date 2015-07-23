@@ -89,5 +89,6 @@ cdef class Packet(object):
     property size:
         def __get__(self): return self.struct.size
     property duration:
-        def __get__(self): return None if self.struct.duration == lib.AV_NOPTS_VALUE else self.struct.duration
-
+        def __get__(self): return None if self.struct.duration < 0 else self.struct.duration
+    property convergence_duration:
+        def __get__(self): return None if self.struct.convergence_duration ==lib.AV_NOPTS_VALUE  else self.struct.convergence_duration

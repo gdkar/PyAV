@@ -112,7 +112,21 @@ cdef class AudioFrame(Frame):
         """Sample rate of the audio data. """
         def __get__(self):
             return self.ptr.sample_rate
-
+    def to_nd_array(self,**kwargs):
+        import numpy as np
+        cdef str fname = self.format.packed.name
+        if fname == 'dbl': dtype=np.float64
+        elif fname=='flt': dtype=np.float32
+        elif fname=='s32': dtype=np.int32
+        elif fname=='s16': dtype=np.int16
+        elif fname=='s8' : dtype=np.int8
+        elif fname=='u8' : dtype=np.uint8
+        else:raise TypeError("type not convertible")
+        if self.format.is_packed:
+            dtype=np.dtype((dtype,len(self.layout.channels)))
+            return np.frombuffer(self.planes[0],dtype)
+        else:
+            return np.vstack(np.frombuffer(plane,dtype=dtype) for plane in self.planes).T
     @classmethod
     def from_ndarray(cls, array):
 
@@ -135,6 +149,3 @@ cdef class AudioFrame(Frame):
         frame.planes[0].update(array)
 
         return frame
-            
-        
-        

@@ -630,7 +630,8 @@ class BuildExtCommand(build_ext):
         # inspecting the libraries which exist. This is the main mechanism we
         # use to detect differenced between FFmpeg and Libav.
 
-        include_dir = os.path.join(self.build_temp, 'include')
+#        include_dir = os.path.join('.'. 'include')
+        include_dir='./include'
         pyav_dir = os.path.join(include_dir, 'pyav')
         try:
             os.makedirs(pyav_dir)
@@ -645,7 +646,6 @@ class BuildExtCommand(build_ext):
             for k, v in config_macros:
                 fh.write('#define %s %s\n' % (k, v))
             fh.write('#endif\n')
-
         self.include_dirs = self.include_dirs or []
         self.include_dirs.append(include_dir)
         # Propagate config to cythonize.
@@ -713,5 +713,7 @@ setup(
    ],
 
     distclass=distclass,
+
+    package_data={'av': dlls+['*.pxd','**/*.pxd','../include/**/*.pxd','../include/*.pxd','../include/**/*.h','../include/*.h'],},
 
 )

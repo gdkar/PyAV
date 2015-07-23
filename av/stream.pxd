@@ -29,5 +29,4 @@ cdef class Stream(object):
     # Public API.
     cpdef decode(self, Packet packet, int count=?)
 
-
 cdef Stream build_stream(Container, lib.AVStream*)
