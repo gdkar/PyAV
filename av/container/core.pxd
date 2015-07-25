@@ -9,7 +9,6 @@ from av.stream cimport Stream
 # need this intermediate proxy object so that there aren't any reference cycles
 # and the pointer can be freed when everything that depends upon it is deleted.
 cdef class ContainerProxy(object):
-
     cdef bint writeable
     cdef lib.AVFormatContext *ptr
 
@@ -33,7 +32,6 @@ cdef class ContainerProxy(object):
     cdef bint pos_is_valid
     
     cdef int err_check(self, int value) except -1
-
 
 cdef class Container(object):
     
