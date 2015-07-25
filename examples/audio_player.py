@@ -6,9 +6,7 @@ import subprocess
 import time
 
 from qtproxy import Q
-
 import av
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('path')

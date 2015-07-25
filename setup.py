@@ -714,6 +714,6 @@ setup(
 
     distclass=distclass,
 
-    package_data={'av': dlls+['*.pxd','**/*.pxd','../include/**/*.pxd','../include/*.pxd','../include/**/*.h','../include/*.h'],},
+    package_data={'av': ['*.pxd','**/*.pxd','../include/**/*.pxd','../include/*.pxd','../include/**/*.h','../include/*.h'],},
 
 )
