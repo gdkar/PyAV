@@ -8,67 +8,34 @@ from av.audio.frame cimport alloc_audio_frame
 from av.audio.layout cimport get_audio_layout
 from av.utils cimport err_check
 
-
 cdef class AudioResampler(object):
 
     def __cinit__(self, format=None, layout=None, rate=None):
         if format is not None:
             self.format = format if isinstance(format, AudioFormat) else AudioFormat(format)
+        else: self.format = None
         if layout is not None:
             self.layout = layout if isinstance(layout, AudioLayout) else AudioLayout(layout)
+        else: self.layout = None
         self.rate = int(rate) if rate else 0
-
+        self.ptr = lib.swr_alloc()
+        if not self.ptr: raise ValueError("could not create SwrContext")
     def __dealloc__(self):
-        if self.ptr:
-            lib.swr_close(self.ptr)
+        if self.ptr: lib.swr_close(self.ptr)
         lib.swr_free(&self.ptr)
 
     cpdef resample(self, AudioFrame frame):
         
         # Take source settings from the first frame.
-        if not self.ptr:
-
+        if (not self.src_format or not self.src_layout or not self.src_rate):
             if not frame:
-                raise ValueError('first frame must not be None')
-
-            # Grab the source descriptors.
+                raise ValueError("must configure resampler with non-null frame.")
             self.src_format = get_audio_format(<lib.AVSampleFormat>frame.ptr.format)
-            self.src_layout = get_audio_layout(0, frame.ptr.channel_layout)
-            self.src_rate = frame.ptr.sample_rate
-
-            # Set some default descriptors.
-            self.format = self.format or self.src_format
-            self.layout = self.layout or self.src_layout
-            self.rate = self.rate or self.src_rate
-
-            self.ptr = lib.swr_alloc()
-            if not self.ptr:
-                raise ValueError('could not create SwrContext')
-
-            # Configure it!
-            try:
-                err_check(lib.av_opt_set_int(self.ptr, 'in_sample_fmt',      <int>self.src_format.sample_fmt, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_sample_fmt',     <int>self.format.sample_fmt, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'in_channel_layout',  self.src_layout.layout, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_channel_layout', self.layout.layout, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'in_sample_rate',     self.src_rate, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_sample_rate',    self.rate, 0))
-                err_check(lib.swr_init(self.ptr))
-            except:
-                self.ptr = NULL
-                raise
-
-        # Make sure the settings are the same on consecutive frames.
-        elif frame:
-
-            if (
-                frame.ptr.format != self.src_format.sample_fmt or
-                frame.ptr.channel_layout != self.src_layout.layout or
-                frame.ptr.sample_rate != self.src_rate
-            ):
-                raise ValueError('frame does not match resampler parameters')
-
-
+            self.src_layout = get_audio_layout(0,frame.ptr.channel_layout)
+            self.src_rate   = frame.ptr.sample_rate
+        self.format = self.format or self.src_format
+        self.layout = self.layout or self.src_layout
+        self.rate   = self.rate   or self.src_rate
         # The example "loop" as given in the FFmpeg documentation looks like:
         # uint8_t **input;
         # int in_samples;
@@ -88,6 +55,13 @@ cdef class AudioResampler(object):
         # My investigations say that this swr_get_delay is not required, but
         # it is in the example loop, and avresample (as opposed to swresample)
         # may require it.
+        cdef AudioFrame output    = alloc_audio_frame()
+        output.ptr.sample_rate    = self.rate
+        output.ptr.format         = self.format.sample_fmt
+        output.ptr.channel_layout = self.layout.layout
+        if not lib.swr_is_initialized(self.ptr):
+            err_check(lib.swr_config_frame(self.ptr,output.ptr,frame.ptr))
+            err_check(lib.swr_init(self.ptr))
         cdef int output_nb_samples = lib.av_rescale_rnd(
             lib.swr_get_delay(self.ptr, self.rate) + frame.ptr.nb_samples,
             self.rate,
@@ -96,37 +70,31 @@ cdef class AudioResampler(object):
         ) if frame else lib.swr_get_delay(self.ptr, self.rate)
 
         # There aren't any frames coming, so no new frame pops out.
-        if not output_nb_samples:
-            return
-
-        cdef AudioFrame output = alloc_audio_frame()
-        output.ptr.sample_rate = self.rate
+        if not output_nb_samples: return
         output._init(
             self.format.sample_fmt,
             self.layout.layout,
             output_nb_samples,
-            1, # Align?
+            0, # Align?
         )
-
-        output.ptr.nb_samples = err_check(lib.swr_convert(
-            self.ptr,
-            output.ptr.extended_data,
-            output_nb_samples,
-            frame.ptr.extended_data if frame else NULL,
-            frame.ptr.nb_samples if frame else 0
-        ))
+        if lib.swr_convert_frame(self.ptr,output.ptr,frame.ptr) < 0:
+            err_check(lib.swr_config_frame(self.ptr,output.ptr,frame.ptr))
+            err_check(lib.swr_convert_frame(self.ptr,output.ptr,frame.ptr))
+#        output.ptr.nb_samples = err_check(lib.swr_convert(
+#            self.ptr,
+#            output.ptr.extended_data,
+#            output_nb_samples,
+#            frame.ptr.extended_data if frame else NULL,
+#            frame.ptr.nb_samples if frame else 0
+#        ))
 
         # Copy some attributes.
         output._copy_attributes_from(frame)
-
         # Empty frame.
-        if output.ptr.nb_samples <= 0:
-            return
-
+        if output.ptr.nb_samples <= 0: return
         # Recalculate linesize since the initial number of samples was
         # only an estimate.
         output._recalc_linesize()
-
         return output
         
 

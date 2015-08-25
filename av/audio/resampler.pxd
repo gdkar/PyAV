@@ -1,5 +1,5 @@
 cimport libav as lib
-
+from libc.stdint cimport int64_t
 from av.audio.format cimport AudioFormat
 from av.audio.frame cimport AudioFrame
 from av.audio.layout cimport AudioLayout
@@ -15,8 +15,7 @@ cdef class AudioResampler(object):
     cdef unsigned int src_rate
 
     # Destination descriptors
-    cdef readonly AudioFormat format
-    cdef readonly AudioLayout layout
-    cdef readonly unsigned int rate
-
+    cdef public AudioFormat format
+    cdef public AudioLayout layout
+    cdef public unsigned int rate
     cpdef resample(self, AudioFrame)
