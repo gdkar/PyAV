@@ -118,6 +118,10 @@ cdef extern from "libavutil/avutil.pyav.h" nogil:
     cdef int av_opt_set_sample_fmt(void * obj,const char *name,AVSampleFormat fmt, int search_flags)
     cdef int av_opt_set_pixel_fmt(void * obj,const char *name,AVPixelFormat fmt, int search_flags)
     cdef int av_opt_set_dict_val(void *obj, const char *name, const AVDictionary *val, int search_flags)
+    cdef int av_opt_get(void *obj, const char *name, int search_flags, uint8_t **out_val)
+    cdef int av_opt_get_int(void *obj, const char *name, int search_flags, int64_t *out_val)
+    cdef int av_opt_get_double(void *obj, const char *name, int search_flags, double *out_val)
+    cdef int av_opt_get_q(void *obj, const char *name, int search_flags, AVRational *out_val)
 cdef extern from "libavutil/pixdesc.h" nogil:
 
 
@@ -295,7 +299,7 @@ cdef extern from "libavutil/opt.h" nogil:
         double max
         int flags
         const char *unit
-
+    cdef AVOption *av_opt_find(void *, const char*, const char*, int, int)
 
 cdef extern from "libavutil/log.h" nogil:
 

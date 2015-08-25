@@ -70,12 +70,11 @@ cdef class InputContainer(Container):
         if include_stream == NULL:
             raise MemoryError()
 
+
         cdef int i
         cdef Packet packet
         cdef int ret
-
         try:
-
             for i in range(self.proxy.ptr.nb_streams):
                 include_stream[i] = False
             for stream in streams:
@@ -86,13 +85,14 @@ cdef class InputContainer(Container):
 
             while True:
 
+
                 packet = Packet()
                 try:
-                    with nogil:
-                        ret = lib.av_read_frame(self.proxy.ptr, &packet.struct)
+                    with nogil: ret = lib.av_read_frame(self.proxy.ptr, &packet.struct)
                     self.proxy.err_check(ret)
                 except AVError:
                     break
+
 
                 if include_stream[packet.struct.stream_index]:
                     # If AVFMTCTX_NOHEADER is set in ctx_flags, then new streams
@@ -104,7 +104,6 @@ cdef class InputContainer(Container):
                         # Keep track of this so that remuxing is easier.
                         packet._time_base = packet.stream._stream.time_base
                         yield packet
-
             # Flush!
             for i in range(self.proxy.ptr.nb_streams):
                 if include_stream[i]:
