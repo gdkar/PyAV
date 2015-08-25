@@ -51,7 +51,6 @@ cdef class _Dictionary(object):
 class Dictionary(_Dictionary, collections.MutableMapping):
     pass
 
-
 cdef _Dictionary wrap_dictionary(lib.AVDictionary *input_):
     cdef _Dictionary output = Dictionary()
     output.ptr = input_

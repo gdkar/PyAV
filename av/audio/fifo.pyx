@@ -116,10 +116,8 @@ cdef class AudioFifo:
     property samples:
         """Number of audio samples (per channel) """
         def __get__(self):
-            if self.ptr !=NULL:
-                return lib.av_audio_fifo_size(self.ptr)
-            else:
-                return None
+            if self.ptr != NULL: return lib.av_audio_fifo_size(self.ptr)
+            else: return 0
     
     property rate:
         """Sample rate of the audio data. """
