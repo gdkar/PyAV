@@ -137,14 +137,13 @@ cdef class Codec(object):
 
 
 cdef class CodecContext(object):
-
     def __cinit__(self, x):
         if x is not _cinit_sentinel:
             raise RuntimeError('cannot instantiate CodecContext')
 
 
-codecs_availible = set()
-cdef lib.AVCodec *ptr = lib.av_codec_next(NULL)
+cdef object codecs_availible = set()
+cdef lib.AVCodec *ptr        = lib.av_codec_next(NULL)
 while ptr:
     codecs_availible.add(ptr.name)
     ptr = lib.av_codec_next(ptr)
@@ -163,7 +162,6 @@ def dump_codecs():
  ....L. = Lossy compression
  .....S = Lossless compression
  ------'''
-
     for name in sorted(codecs_availible):
         try:
             e_codec = Codec(name, 'w')

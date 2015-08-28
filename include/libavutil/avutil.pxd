@@ -342,3 +342,7 @@ cdef extern from "libavutil/log.h" nogil:
     # Get the logs.
     ctypedef void(*av_log_callback)(void *, int, const char *, va_list)
     void av_log_set_callback (av_log_callback callback)
+
+cdef extern from "libavutil/frame.h" nogil:
+    cdef int64_t av_frame_get_best_effort_timestamp ( const AVFrame *frame )
+    cdef void    av_frame_set_best_effort_timestamp ( AVFrame *frame, int64_t val )

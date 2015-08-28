@@ -20,11 +20,9 @@ cdef class AudioFifo:
                 self.layout,
                 id(self)
                 )
-     
     def __cinit__(self):
         self.last_pts = lib.AV_NOPTS_VALUE
         self.pts_offset = 0
-        
     cpdef write(self, AudioFrame frame):
         """Push some samples into the queue."""
 
@@ -33,9 +31,9 @@ cdef class AudioFifo:
 
             self.format = get_audio_format(<lib.AVSampleFormat>frame.ptr.format)
             self.layout = get_audio_layout(0, frame.ptr.channel_layout)
-            self._time_base.num = frame.time_base.num
-            self._time_base.den = frame.time_base.den
-            self.rate = frame.ptr.sample_rate
+            self._time_base.num = frame._time_base.num
+            self._time_base.den = frame._time_base.den
+            self._rate = frame.ptr.sample_rate
             self.ptr = lib.av_audio_fifo_alloc(
                 self.format.sample_fmt,
                 len(self.layout.channels),
@@ -52,7 +50,7 @@ cdef class AudioFifo:
                 raise ValueError('frame does not match fifo parameters')
         if frame.ptr.pts != lib.AV_NOPTS_VALUE:
             self.last_pts   = frame.ptr.pts
-            self.pts_offset = frame.ptr.nb_samples  / ( self.time_base * self.rate)
+            self.pts_offset = int(frame.ptr.nb_samples  / ( self.time_base * self.rate))
         err_check(lib.av_audio_fifo_write(
             self.ptr, 
             <void **>frame.ptr.extended_data,
@@ -89,22 +87,20 @@ cdef class AudioFifo:
             <void **>frame.ptr.extended_data,
             nb_samples,
         ))
-        frame.ptr.sample_rate = self._rate
-        frame.time_base   = self.time_base
+        frame.ptr.sample_rate = self.rate
+        frame._time_base   = self._time_base
         frame.ptr.channel_layout = self.layout.layout
         if self.last_pts != lib.AV_NOPTS_VALUE:
             frame.ptr.pts = self.last_pts - self.pts_offset
-            self.pts_offset -= frame.samples / self.rate / self.time_base
+            self.pts_offset -= int(frame.samples / self.rate / self.time_base)
         
         return frame
-    def __len__(self):
-        return self.samples
+    def __len__(self): return self.samples
     property samples:
         """Number of audio samples (per channel) """
         def __get__(self):
             if self.ptr != NULL: return lib.av_audio_fifo_size(self.ptr)
             else: return 0
-    
     property rate:
         """Sample rate of the audio data. """
         def __get__(self):

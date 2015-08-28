@@ -81,10 +81,9 @@ cdef void set_option( void *obj, const char *name, object val, int search_flags)
         lib.av_opt_set_q(obj,name,RATIONAL,search_flags)
     else:
         lib.av_opt_set  (obj,name,str(val),search_flags)
-
     pass
-cdef class Option(object):
 
+cdef class Option(object):
     def __cinit__(self, sentinel):
         if sentinel != _cinit_sentinel:
             raise RuntimeError('Cannot construct av.Option')

@@ -45,20 +45,15 @@ cdef class AudioStream(Stream):
             return self._codec_context.channels
         
     cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
-
-        if not self.next_frame:
-            self.next_frame = alloc_audio_frame()
-
+        if not self.next_frame: self.next_frame = alloc_audio_frame()
         cdef int completed_frame = 0
         data_consumed[0] = err_check(lib.avcodec_decode_audio4(self._codec_context, self.next_frame.ptr, &completed_frame, packet))
-        if not completed_frame:
-            return
-        
+        if not completed_frame: return
+        self.next_frame.ptr.pts = lib.av_frame_get_best_effort_timestamp ( self.next_frame.ptr )
         cdef AudioFrame frame = self.next_frame
-        self.next_frame = None
+        self.next_frame       = None
         
         frame._init_properties()
-        
         return frame
     
     cpdef encode(self, AudioFrame input_frame):
