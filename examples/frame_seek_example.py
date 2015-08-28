@@ -6,38 +6,27 @@ from qtproxy import Q
 import sys
 import av
 
-
 AV_TIME_BASE = 1000000
 
 def pts_to_frame(pts, time_base, frame_rate, start_time):
     return int(pts * time_base * frame_rate) - int(start_time * time_base * frame_rate)
 
 def get_frame_rate(stream):
-    
     if stream.average_rate.denominator and stream.average_rate.numerator:
         return float(stream.average_rate)
     if stream.time_base.denominator and stream.time_base.numerator:
         return 1.0/float(stream.time_base)
-    else:
-        raise ValueError("Unable to determine FPS")
+    else: raise ValueError("Unable to determine FPS")
     
 def get_frame_count(f, stream):
-    
-    if stream.frames:
-        return stream.frames
-    elif stream.duration:
-        return pts_to_frame(stream.duration, float(stream.time_base), get_frame_rate(stream), 0)
-    elif f.duration:
-        return pts_to_frame(f.duration, 1/float(AV_TIME_BASE), get_frame_rate(stream), 0)
-        
-    else:
-        raise ValueError("Unable to determine number for frames")
+    if stream.frames:     return stream.frames
+    elif stream.duration: return pts_to_frame(stream.duration, float(stream.time_base), get_frame_rate(stream), 0)
+    elif f.duration:      return pts_to_frame(f.duration, 1/float(AV_TIME_BASE), get_frame_rate(stream), 0)
+    else:                 raise ValueError("Unable to determine number for frames")
 
 class FrameGrabber(Q.QObject):
-    
     frame_ready = Q.pyqtSignal(object, object)
     update_frame_range = Q.pyqtSignal(object)
-    
     def __init__(self, parent =None):
         super(FrameGrabber, self).__init__(parent)
         self.file = None
@@ -68,8 +57,6 @@ class FrameGrabber(Q.QObject):
                     if not pts is None:frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
                 elif not frame_index is None:frame_index += 1
                 yield frame_index, frame
-                
-                
     @Q.pyqtSlot(object)
     def request_frame(self, target_frame):
         frame = self.get_frame(target_frame)

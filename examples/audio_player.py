@@ -55,7 +55,7 @@ class PlayThread(Q.QThread ):
             samples_free = self.output.bytesFree() // self.frameSize
             while self.fifo.samples >= samples_free:
                 if self.output.bytesFree() >= self.output.bufferSize() // 4:
-                    frame= self.fifo.read(self.output.bytesFree() // self.frameSize)
+                    frame = self.fifo.read(samples_free)
 #                    print ( pi, fi, frame, self.output.state())
                     data = frame.planes[0].to_bytes()
                     written = self.device.write(data)
