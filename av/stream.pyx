@@ -40,11 +40,11 @@ cdef class Stream(object):
         raise RuntimeError('cannot manually instatiate Stream')
     cdef _init(self, Container container, lib.AVStream *stream):
         
-        self._container = container.proxy
+        self._container      = container.proxy        
         self._weak_container = PyWeakref_NewRef(container, None)
-        self._stream = stream
-        self._codec_context = stream.codec
-        self.metadata = avdict_to_dict(stream.metadata)
+        self._stream         = stream
+        self._codec_context  = stream.codec
+        self.metadata        = avdict_to_dict(stream.metadata)
         # This is an input container!
         if self._container.ptr.iformat:
             # Find the codec.
@@ -69,7 +69,6 @@ cdef class Stream(object):
             self.name or '<nocodec>',
             id(self),
         )
-
     property id:
         def __get__(self): return self._stream.id
 
@@ -106,11 +105,9 @@ cdef class Stream(object):
 
     property start_time:
         def __get__(self): return self._stream.start_time
-
     property duration:
         def __get__(self):
-            if self._stream.duration == lib.AV_NOPTS_VALUE:
-                return None
+            if self._stream.duration == lib.AV_NOPTS_VALUE: return None
             return self._stream.duration
 
     property frames:
@@ -134,18 +131,14 @@ cdef class Stream(object):
             return self._codec_context.bit_rate_tolerance if self._codec_context else None
         def __set__(self, int value):
             self._codec_context.bit_rate_tolerance = value
-
     property language:
-        def __get__(self):
-            return self.metadata.get('language')
+        def __get__(self): return self.metadata.get('language')
 
     # TODO: Does it conceptually make sense that this is on streams, instead
     # of on the container?
     property thread_count:
-        def __get__(self):
-            return self._codec_context.thread_count
-        def __set__(self, int value):
-            self._codec_context.thread_count = value
+        def __get__(self):            return self._codec_context.thread_count
+        def __set__(self, int value): self._codec_context.thread_count = value
 
     cpdef decode(self, Packet packet, int count=0):
         """Decode a list of :class:`.Frame` from the given :class:`.Packet`.
@@ -155,12 +148,8 @@ cdef class Stream(object):
         (if they are encoded with a codec that has B-frames).
 
         """
-
-        if packet is None:
-            raise TypeError('packet must not be None')
-
-        if not self._codec:
-            raise ValueError('cannot decode unknown codec')
+        if packet is None:  raise TypeError('packet must not be None')
+        if not self._codec: raise ValueError('cannot decode unknown codec')
 
         cdef int data_consumed = 0
         cdef list decoded_objs = []
@@ -172,38 +161,28 @@ cdef class Stream(object):
 
         # Keep decoding while there is data.
         while is_flushing or packet.struct.size > 0:
-
             if is_flushing:
                 packet.struct.data = NULL
                 packet.struct.size = 0
-
             decoded = self._decode_one(&packet.struct, &data_consumed)
             packet.struct.data += data_consumed
             packet.struct.size -= data_consumed
-
             if decoded:
-
-                if isinstance(decoded, Frame):
-                    self._setup_frame(decoded)
+                if isinstance(decoded, Frame): self._setup_frame(decoded)
                 decoded_objs.append(decoded)
 
                 # Sometimes we will error if we try to flush the stream
                 # (e.g. MJPEG webcam streams), and so we must be able to
                 # bail after the first, even though buffers may build up.
-                if count and len(decoded_objs) >= count:
-                    break
-
+                if count and len(decoded_objs) >= count: break
             # Sometimes there are no frames, and no data is consumed, and this
             # is ok. However, no more frames are going to be pulled out of here.
             # (It is possible for data to not be consumed as long as there are
             # frames, e.g. during flushing.)
-            elif not data_consumed:
-                break
-
+            elif not data_consumed: break
         # Restore the packet.
         packet.struct.data = original_data
         packet.struct.size = original_size
-
         return decoded_objs
     
     def seek(self, timestamp, mode='time', backward=True, any_frame=False):
@@ -214,7 +193,6 @@ cdef class Stream(object):
             self._container.seek(-1, <long>(timestamp * lib.AV_TIME_BASE), mode, backward, any_frame)
         else:
             self._container.seek(self._stream.index, timestamp, mode, backward, any_frame)
- 
     cdef _setup_frame(self, Frame frame):
         # This PTS handling looks a little nuts, however it really seems like it
         # is the way to go. The PTS from a packet is the correct one while

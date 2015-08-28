@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import array
 import argparse
 import sys
@@ -15,13 +16,6 @@ args = parser.parse_args()
 container = av.open(args.path)
 stream = next(s for s in container.streams if s.type == 'audio')
 
-fifo = av.AudioFifo()
-resampler = av.AudioResampler(
-    format=av.AudioFormat('s16').packed,
-    layout='stereo',
-    rate=48000,
-)
-
 
 
 qformat = Q.AudioFormat()
@@ -29,51 +23,59 @@ qformat.setByteOrder(Q.AudioFormat.LittleEndian)
 qformat.setChannelCount(2)
 qformat.setCodec('audio/pcm')
 qformat.setSampleRate(48000)
-qformat.setSampleSize(16)
-qformat.setSampleType(Q.AudioFormat.SignedInt)
+qformat.setSampleSize(32)
+qformat.setSampleType(Q.AudioFormat.Float)
+qApp = Q.QApplication([])
+buffer_time = 0.0125
 
-output = Q.AudioOutput(qformat)
-output.setBufferSize(2 * 2 * 48000)
-
-device = output.start()
-
-print qformat, output, device
+class PlayThread(Q.QThread ):
+    def __init__ ( self,qformat, it, **kwargs ):
+        super(self.__class__,self).__init__(**kwargs)
+        self.qformat = qformat
+        self.output  = Q.AudioOutput(qformat)
+        self.output.setBufferSize(buffer_time * qformat.sampleRate() * qformat.sampleSize() * qformat.channelCount() // 8)
+        self.device  = self.output.start()
+        self.it = it
+        self.fifo = av.AudioFifo()
+        self.resampler = av.AudioResampler(
+                format = av.AudioFormat("flt").packed,
+                layout = "stereo",
+                rate   = 48000 
+                )
+        self.frameSize = qformat.sampleSize() * qformat.channelCount()//8
+        self.byteRate  = self.frameSize * qformat.sampleRate()
+        self.start()
+    def run ( self ):
+        for pi, fi, frame in self.it:
+            self.fifo.write(self.resampler.resample(frame))
+            bytes_buffered = self.output.bufferSize() - self.output.bytesFree()
+            s_processed = self.output.processedUSecs() * 1e-6
+            s_buffered  = bytes_buffered / self.byteRate
+#            print('pts: %.3f, played: %.3f, buffered: %.3f' % (frame.time or 0, s_processed , s_buffered ))
+            samples_free = self.output.bytesFree() // self.frameSize
+            while self.fifo.samples >= samples_free:
+                if self.output.bytesFree() >= self.output.bufferSize() // 4:
+                    frame= self.fifo.read(self.output.bytesFree() // self.frameSize)
+#                    print ( pi, fi, frame, self.output.state())
+                    data = frame.planes[0].to_bytes()
+                    written = self.device.write(data)
+                    if written < len(data):
+                        print("failed to write all data, {0} out of {1}".format(written,len(data)))
+                bytes_buffered = self.output.bufferSize() - self.output.bytesFree()
+                s_buffered  = bytes_buffered / self.byteRate
+                self.usleep(int(s_buffered * 0.25e6))
+                samples_free = self.output.bytesFree() // self.frameSize
 
 def decode_iter():
     try:
         for pi, packet in enumerate(container.demux(stream)):
             for fi, frame in enumerate(packet.decode()):
                 yield pi, fi, frame
-    except:
-        return
+    except: return
+play_thread = PlayThread(qformat, decode_iter())
+#device = output.start()
 
-for pi, fi, frame in decode_iter():
+print(qformat, play_thread.output, play_thread.device)
 
-    frame = resampler.resample(frame)
-    print pi, fi, frame, output.state()
-    
-    bytes_buffered = output.bufferSize() - output.bytesFree()
-    us_processed = output.processedUSecs()
-    us_buffered = 1000000 * bytes_buffered / (2 * 16 / 8) / 48000
-    print 'pts: %.3f, played: %.3f, buffered: %.3f' % (frame.time or 0, us_processed / 1000000.0, us_buffered / 1000000.0)
-
-
-    data = frame.planes[0].to_bytes()
-    while data:
-        written = device.write(data)
-        if written:
-            # print 'wrote', written
-            data = data[written:]
-        else:
-            # print 'did not accept data; sleeping'
-            time.sleep(0.033)
-
-    if False and pi % 100 == 0:
-        output.reset()
-        print output.state(), output.error()
-        device = output.start()
-
-    # time.sleep(0.05)
-
-while output.state() == Q.Audio.ActiveState:
+while not play_thread.isFinished() :
     time.sleep(0.1)
