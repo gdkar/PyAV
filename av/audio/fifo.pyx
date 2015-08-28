@@ -1,7 +1,7 @@
 from av.audio.format cimport get_audio_format
 from av.audio.frame cimport alloc_audio_frame
 from av.audio.layout cimport get_audio_layout
-from av.utils cimport err_check
+from av.utils cimport err_check, to_avrational, avrational_to_fraction
 from fractions import Fraction
 
 cdef class AudioFifo:
@@ -24,8 +24,6 @@ cdef class AudioFifo:
     def __cinit__(self):
         self.last_pts = lib.AV_NOPTS_VALUE
         self.pts_offset = 0
-        self.time_base.num = 1
-        self.time_base.den = 1
         
     cpdef write(self, AudioFrame frame):
         """Push some samples into the queue."""
@@ -35,35 +33,31 @@ cdef class AudioFifo:
 
             self.format = get_audio_format(<lib.AVSampleFormat>frame.ptr.format)
             self.layout = get_audio_layout(0, frame.ptr.channel_layout)
-            self.time_base.den = frame.ptr.sample_rate
+            self._time_base.num = frame.time_base.num
+            self._time_base.den = frame.time_base.den
+            self.rate = frame.ptr.sample_rate
             self.ptr = lib.av_audio_fifo_alloc(
                 self.format.sample_fmt,
                 len(self.layout.channels),
                 frame.ptr.nb_samples * 2, # Just a default number of samples; it will adjust.
             )
-            if not self.ptr:
-                raise ValueError('could not create fifo')
-        
+            if not self.ptr: raise ValueError('could not create fifo')
         # Make sure nothing changed.
         else:
             if (
                 frame.ptr.format != self.format.sample_fmt or
                 frame.ptr.channel_layout != self.layout.layout or
-                frame.ptr.sample_rate != self.time_base.den
-            ):
+                frame.ptr.sample_rate != self.rate
+            ): 
                 raise ValueError('frame does not match fifo parameters')
-
         if frame.ptr.pts != lib.AV_NOPTS_VALUE:
-            self.last_pts = frame.ptr.pts
-            self.pts_offset = self.samples
-            
+            self.last_pts   = frame.ptr.pts
+            self.pts_offset = frame.ptr.nb_samples  / ( self.time_base * self.rate)
         err_check(lib.av_audio_fifo_write(
             self.ptr, 
             <void **>frame.ptr.extended_data,
             frame.ptr.nb_samples,
         ))
-
-
     cpdef read(self, unsigned int nb_samples=0, bint partial=False):
         """Read samples from the queue.
 
@@ -76,19 +70,13 @@ cdef class AudioFifo:
 
         """
 
-        if not self.samples:
-            return
-
+        if not self.samples: return
         nb_samples = nb_samples or self.samples
-        if not nb_samples:
-            return
-        if not partial and self.samples < nb_samples:
-            return
-
+        if not nb_samples: return
+        if not partial and self.samples < nb_samples: return
         cdef int ret
         cdef int linesize
         cdef int sample_size
-
         cdef AudioFrame frame = alloc_audio_frame()
         frame._init(
             self.format.sample_fmt,
@@ -96,19 +84,17 @@ cdef class AudioFifo:
             nb_samples,
             1, # Align?
         )
-
         err_check(lib.av_audio_fifo_read(
             self.ptr,
             <void **>frame.ptr.extended_data,
             nb_samples,
         ))
-
-        frame.ptr.sample_rate = self.time_base.den
+        frame.ptr.sample_rate = self._rate
+        frame.time_base   = self.time_base
         frame.ptr.channel_layout = self.layout.layout
-        
         if self.last_pts != lib.AV_NOPTS_VALUE:
             frame.ptr.pts = self.last_pts - self.pts_offset
-            self.pts_offset -= nb_samples
+            self.pts_offset -= frame.samples / self.rate / self.time_base
         
         return frame
     def __len__(self):
@@ -122,5 +108,7 @@ cdef class AudioFifo:
     property rate:
         """Sample rate of the audio data. """
         def __get__(self):
-            return Fraction(self.time_base.den,self.time_base.num) if self.time_base.num else 0
-
+            return self._rate
+    property time_base:
+        def __get__(self):
+            return avrational_to_fraction(&self._time_base)
