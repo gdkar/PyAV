@@ -43,9 +43,9 @@ cdef class Frame(object):
 
     property time_base:
         def __get__(self):
-            return avrational_to_fraction(&self.time_base)
+            return avrational_to_fraction(&self._time_base)
         def __set__(self, value):
-            to_avrational(value,&self.time_base)
+            to_avrational(value,&self._time_base)
     cdef _init_planes(self, cls=Plane):
         # We need to detect which planes actually exist, but also contrain
         # ourselves to the maximum plane count (as determined only by VideoFrames
@@ -63,8 +63,7 @@ cdef class Frame(object):
             plane = cls(self, i)
             Py_INCREF(plane)
             PyTuple_SET_ITEM(self.planes, i, plane)
-    cdef int _max_plane_count(self):
-        return INT_MAX
+    cdef int _max_plane_count(self): return INT_MAX
     cdef _copy_attributes_from(self, Frame other):
         self.index = other.index
         self._time_base = other._time_base

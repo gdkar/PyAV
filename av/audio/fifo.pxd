@@ -14,10 +14,10 @@ cdef class AudioFifo:
     cdef readonly AudioFormat format
     cdef readonly AudioLayout layout
         
-    cdef int64_t last_pts
-    cdef int64_t pts_offset
-    cdef lib.AVRational time_base
-    
+    cdef int64_t         last_pts
+    cdef int64_t         pts_offset
+    cdef int            _rate
+    cdef lib.AVRational _time_base
     cpdef write(self, AudioFrame frame)
     cpdef read(self, unsigned int nb_samples=*, bint partial=*)
     
