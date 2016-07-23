@@ -2,7 +2,7 @@
 Note this example only really works accurately on constant frame rate media. 
 """
 
-from qtproxy import Q
+from .qtproxy import Q
 import sys
 import av
 
@@ -48,7 +48,7 @@ class FrameGrabber(Q.QObject):
         time_base = self.time_base
         self.pts_seen = False
         for packet in self.file.demux(self.stream):
-            #print "    pkt", packet.pts, packet.dts, packet
+            #print("    pkt", packet.pts, packet.dts, packet)
             if packet.pts:self.pts_seen = True
             for frame in packet.decode():
                 if frame_index is None:
@@ -62,7 +62,7 @@ class FrameGrabber(Q.QObject):
         frame = self.get_frame(target_frame)
         if not frame:return
         rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
-        #print rgba.to_image().save("test.png")
+        #print(rgba.to_image().save("test.png"))
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
         self.frame = bytearray(rgba.planes[0])
@@ -79,7 +79,7 @@ class FrameGrabber(Q.QObject):
         if target_frame != self.active_frame:return
         if target_frame in self.frame_cache:
             return self.frame_cache[target_frame]
-        if (not self.frame_cache.keys() or target_frame>min(self.frame_cache.keys())) and target_frame < self.last_seen + 64:
+        if (not list(self.frame_cache.keys()) or target_frame>min(self.frame_cache.keys())) and target_frame < self.last_seen + 64:
             next_frame = self.next_frame()
             for i, (frame_index, frame) in enumerate(next_frame):
                 self.frame_cache[frame_index]=frame
@@ -88,7 +88,7 @@ class FrameGrabber(Q.QObject):
                     next_frame.close()
                 if frame_index == target_frame:
                     return frame
-        print 'seeking to', target_frame
+        print(('seeking to', target_frame))
         seek_frame = target_frame
         rate = self.rate
         time_base = self.time_base
@@ -102,7 +102,7 @@ class FrameGrabber(Q.QObject):
             if original_target_frame_pts is None:original_target_frame_pts = target_pts
             self.stream.seek(int(target_pts))
             frame_index = None
-            for index in self.frame_cache.keys():
+            for index in list(self.frame_cache.keys()):
                 if abs(index-target_frame>256):
                     del self.frame_cache[index]
             for i, (frame_index, frame) in enumerate(self.next_frame()):
@@ -110,7 +110,7 @@ class FrameGrabber(Q.QObject):
                 self.last_seen = frame_index 
                 # optimization if the time slider has changed, the requested frame no longer valid
 #                if target_frame != self.active_frame:return
-                print "   ", i, "at frame", frame_index, "at ts:", frame.pts,frame.dts,"target:", target_pts, 'orig', original_target_frame_pts
+                print(("   ", i, "at frame", frame_index, "at ts:", frame.pts,frame.dts,"target:", target_pts, 'orig', original_target_frame_pts))
                 if frame_index == target_frame:
                     return self.frame_cache[target_frame]
                 if frame_index is None:pass
@@ -124,13 +124,13 @@ class FrameGrabber(Q.QObject):
                     if frame_index > target_frame:
                         if target_frame in self.frame_cache:
                             return self.frame_cache[target_frame]
-                        print over_seek, self.frame_cache
+                        print((over_seek, self.frame_cache))
                         break
 
                     
                 seek_frame -= 1
                 reseek -= 1
-                print "over seeked by %s, backtracking.. seeking: %i target: %i retry: %i" % (str(over_seek),  seek_frame, target_frame, reseek)
+                print(("over seeked by %s, backtracking.. seeking: %i target: %i retry: %i" % (str(over_seek),  seek_frame, target_frame, reseek)))
 
             else:
                 break
@@ -173,7 +173,7 @@ class FrameGrabber(Q.QObject):
             frame_index = None
             
             for frame_index, frame in self.next_frame():
-                print frame_index, frame
+                print((frame_index, frame))
                 continue
             
             if not frame_index is None:
@@ -183,7 +183,7 @@ class FrameGrabber(Q.QObject):
                 retry -= 1
                 
         
-        print "frame count seeked", frame_index, "container frame count", frame_count
+        print(("frame count seeked", frame_index, "container frame count", frame_count))
         
         return frame_index or frame_count
     
@@ -208,16 +208,12 @@ class FrameGrabber(Q.QObject):
  
         self.start_time = pts or first_frame.dts
             
-        print "First pts", pts, self.stream.start_time, first_frame
+        print(("First pts", pts, self.stream.start_time, first_frame))
 
         #self.nb_frames = get_frame_count(self.file, self.stream)
         self.nb_frames = self.get_frame_count()
         
         self.update_frame_range.emit(self.nb_frames)
-        
-        
-        
-        
         
 class DisplayWidget(Q.QLabel):
     def __init__(self, parent=None):
@@ -308,7 +304,7 @@ class VideoPlayerWidget(Q.QWidget):
         
     @Q.pyqtSlot(object)
     def set_frame_range(self, maximum):
-        print "frame range =", maximum
+        print(("frame range =", maximum))
         self.timeline.setMaximum(maximum)
         self.frame_control.setMaximum(maximum)
     
@@ -332,7 +328,7 @@ class VideoPlayerWidget(Q.QWidget):
                 direction = -1
                 
             if event.modifiers() == Q.ShiftModifier:
-                print 'shift'
+                print('shift')
                 direction *= 10
                 
             self.timeline.setValue(self.timeline.value() + direction)

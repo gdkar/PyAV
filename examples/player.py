@@ -1,4 +1,9 @@
-from __future__ import division
+
+try:
+    str
+except NameError:
+    str = str
+
 import argparse
 import ctypes
 import os
@@ -27,6 +32,7 @@ class PlayerGLWidget(Q.OpenGLWidget):
         self.img_width      = self.stream.width
         self.img_height     = self.stream.height
         self.width = self.img_width
+        self.tex_id = 0
         self.height = self.img_height
 #        self.decodeThread = Q.Thread()
         self.frameTimer = Q.QTimer()
@@ -47,7 +53,7 @@ class PlayerGLWidget(Q.OpenGLWidget):
         h = img.height
         self.setImage(w,h,img.reformat(w,h,"rgb24"))
     def initializeGL(self):
-        print 'initialize GL'
+        print('initialize GL')
         fmt = self.format()
         fmt.setSamples(4)
         fmt.setMajorVersion(3)
@@ -61,9 +67,9 @@ class PlayerGLWidget(Q.OpenGLWidget):
         gl.bindTexture(gl.TEXTURE_2D, self.tex_id)
         gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
         gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        print 'texture id', self.tex_id
+        print(('texture id', self.tex_id))
     def setImage(self,w,h,img):
-        print("setting new image, size {}x{}".format(w,h))
+        print(("setting new image, size {}x{}".format(w,h)))
         ptr = ctypes.c_void_p(img.planes[0].ptr)
         gl.bindTexture(gl.TEXTURE_2D, self.tex_id)
         gl.texImage2D(gl.TEXTURE_2D, 0, 3, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, ptr)
@@ -71,7 +77,7 @@ class PlayerGLWidget(Q.OpenGLWidget):
         self.img_height = h
         self.update()
     def resizeGL(self, w, h):
-        print 'resize to', w, h
+        print(('resize to', w, h))
         self.width  = w
         self.height = h
         gl.viewport(0, 0, w, h)
@@ -85,8 +91,8 @@ class PlayerGLWidget(Q.OpenGLWidget):
         dratio = max(hratio,vratio)
         hratio /= dratio
         vratio /= dratio
-        # print 'paint!'
-#        gl.clear(gl.COLOR_BUFFER_BIT)
+        print('paint!')
+        gl.clear(gl.COLOR_BUFFER_BIT)
         with gl.begin('polygon'):
             gl.texCoord(0, 0); gl.vertex(-hratio,  vratio)
             gl.texCoord(1, 0); gl.vertex( hratio,  vratio)
@@ -118,7 +124,7 @@ glwidget.raise_()
 
 #    count += 1
 #    elapsed = time.time() - start_time
-#    print frame.pts, frame.dts, '%.2ffps' % (count / elapsed)
+#    print(frame.pts, frame.dts, '%.2ffps' % (count / elapsed))
 
 #timer.start()
 
