@@ -1,5 +1,9 @@
 '''Mikes wrapper for the visualizer???'''
 from contextlib import contextmanager
+try:
+    str
+except NameError:
+    str = str
 
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -27,7 +31,7 @@ class ModuleProxy(object):
         if not module:module = name
         if '.' in name:self.name = name.split('.')[-1].lower()
         else:self.name = name.lower()
-        if isinstance(module,basestring):
+        if isinstance(module,str):
             self.module = __import__(module)
             if '.' in module:
                 for part in  module.split('.')[1:]:
@@ -54,7 +58,7 @@ class GLProxy(ModuleProxy):
     def attrib(self, *args):
         mask = 0
         for arg in args:
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 arg = getattr(self.module, 'GL_{arg.upper()}_BIT'.format(arg=arg))
             if arg:mask |= arg
         self.pushAttrib(mask)
@@ -72,10 +76,10 @@ class GLProxy(ModuleProxy):
     def _enable(self, enable, args, kwargs):
         todo = []
         for arg in args:
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 arg = getattr(self.module, 'GL_%s' % arg.upper())
             todo.append((arg, enable))
-        for key, value in kwargs.iteritems():
+        for key, value in list(kwargs.items()):
             flag = getattr(self.module, 'GL_%s' % key.upper())
             value = value if enable else not value
             todo.append((flag, value))
@@ -86,7 +90,7 @@ class GLProxy(ModuleProxy):
                 self.module.glDisable(flag)
         
     def begin(self, arg):
-        if isinstance(arg, basestring):
+        if isinstance(arg, str):
             arg = getattr(self.module, 'GL_%s' % arg.upper())
         self.module.glBegin(arg)
         return self._apply_on_exit(self.module.glEnd)

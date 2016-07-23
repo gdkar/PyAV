@@ -1,5 +1,5 @@
-from __future__ import print_function, division, absolute_import
-import argparse, ctypes, os, sys, pprint, time, av, posix, posixpath, posixfile, posix_timers
+
+import argparse, ctypes, os, sys, pprint, time, av, posix 
 class ModuleProxy(object):
     def __init__(self,name,prefix=None):
         self.name = name.split('.')[-1].lower() if '.' in name else name.lower()
@@ -28,7 +28,7 @@ class GLProxy(ModuleProxy):
     def attrib(self, *args):
         mask = 0
         for arg in args:
-            if isinstance(arg,basestring):
+            if isinstance(arg,str):
                 arg = getattr(selfmodule,'GL_{}_BIT'.format(arg.upper()))
             mask |= arg
         self.pushAttrib(mask)
@@ -43,10 +43,10 @@ class GLProxy(ModuleProxy):
     def _enable(self,enable,*args,**kwargs):
         todo = list()
         for arg in args:
-            if isinstance(arg,basestring):
+            if isinstance(arg,str):
                 arg = getattr(self.module,'GL_{}'.format(arg.upper()))
             if arg: todo.append((arg,enable))
-        for key,value in kwargs.iteritems():
+        for key,value in kwargs.items():
             flag = getattr(self.module,'GL_{}'.format(key.upper()))
             value= value if enable else not value
             todo.append((flag,value))
@@ -56,7 +56,7 @@ class GLProxy(ModuleProxy):
             else:
                 self.module.glDisable(flag)
     def begin(self,arg):
-        if isinstance(arg,basestring):
+        if isinstance(arg,str):
             arg = getattr(self.module,'GL_{}'.format(arg.upper()))
         if arg: 
             self.module.glBegin(arg)
@@ -69,9 +69,6 @@ class GLProxy(ModuleProxy):
 
 gl   = GLProxy('OpenGL.GL')
 glx  = ModuleProxy('OpenGL.GLX','glX')
-#glu  = ModuleProxy('OpenGL.GLU')
-#glx  = ModuleProxy('OpenGL.GLX')
-#glut = ModuleProxy('OpenGL.GLUT')
                 
 from PyQt5 import Qt as q, QtWidgets as qw, QtGui as qg, QtMultimedia as qm
 from PyQt5.Qt import Qt as qconst
