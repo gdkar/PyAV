@@ -26,7 +26,7 @@ qformat.setSampleRate(48000)
 qformat.setSampleSize(32)
 qformat.setSampleType(Q.AudioFormat.Float)
 qApp = Q.QApplication([])
-buffer_time = 0.0125
+buffer_time = 5e-3
 
 class PlayThread(Q.QThread ):
     def __init__ ( self,qformat, it, **kwargs ):

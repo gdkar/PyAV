@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import argparse
 import resource
@@ -21,8 +21,8 @@ def format_bytes(n):
         n //= 1024
     return '%d%sB' % (n, ('', 'k', 'M', 'G', 'T', 'P')[order])
 usage = []
-for round_ in xrange(args.count):
-    print 'Round %d/%d:' % (round_ + 1, args.count)
+for round_ in range(args.count):
+    print(('Round %d/%d:' % (round_ + 1, args.count)))
     if args.gc:gc.collect()
     usage.append(resource.getrusage(resource.RUSAGE_SELF))
     fh = av.open(args.input)
@@ -30,14 +30,14 @@ for round_ in xrange(args.count):
     fi = 0
     for packet in fh.demux([vs]):
         for frame in packet.decode():
-            if args.print_:print frame
-            if args.to_rgb:print frame.to_rgb()
-            if args.to_image:print frame.to_image()
+            if args.print_:print(frame)
+            if args.to_rgb:print((frame.to_rgb()))
+            if args.to_image:print((frame.to_image()))
             fi += 1
         if fi > args.frames:break
     frame = packet = fh = vs = None
 usage.append(resource.getrusage(resource.RUSAGE_SELF))
-for i in xrange(len(usage) - 1):
+for i in range(len(usage) - 1):
     before = usage[i]
     after = usage[i + 1]
-    print '%s (%s)' % (format_bytes(after.ru_maxrss), format_bytes(after.ru_maxrss - before.ru_maxrss))
+    print(('%s (%s)' % (format_bytes(after.ru_maxrss), format_bytes(after.ru_maxrss - before.ru_maxrss))))
