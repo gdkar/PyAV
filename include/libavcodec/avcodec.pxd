@@ -52,7 +52,21 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         AV_CODEC_ID_NONE
         AV_CODEC_ID_MPEG2VIDEO
         AV_CODEC_ID_MPEG1VIDEO
-    
+    cdef int  av_codec_get_lowres(const AVCodecContext *avctx);
+    cdef void av_codec_set_lowres(AVCodecContext *avctx, int val);
+
+    cdef AVRational av_codec_get_pkt_timebase         (const AVCodecContext *avctx);
+    cdef void       av_codec_set_pkt_timebase         (AVCodecContext *avctx, AVRational val);
+
+    cdef void                     av_codec_set_codec_descriptor(AVCodecContext *avctx, const AVCodecDescriptor *desc);
+
+    cdef unsigned av_codec_get_codec_properties(const AVCodecContext *avctx);
+    cdef int  av_codec_get_seek_preroll(const AVCodecContext *avctx);
+    cdef void av_codec_set_seek_preroll(AVCodecContext *avctx, int val);
+
+    cdef uint16_t *av_codec_get_chroma_intra_matrix(const AVCodecContext *avctx);
+    cdef void av_codec_set_chroma_intra_matrix(AVCodecContext *avctx, uint16_t *val);
+
     # See: http://ffmpeg.org/doxygen/trunk/structAVCodec.html
     cdef struct AVCodec:
 
@@ -70,7 +84,29 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
 
         AVClass *priv_class
         
-        
+    cdef enum AVPacketSideDataType:
+        AV_PKT_DATA_PALETTE
+        AV_PKT_DATA_NEW_EXTRADATA
+        AV_PKT_DATA_PARAM_CHANGE
+        AV_PKT_DATA_H263_MB_INFO
+        AV_PKT_DATA_REPLAYGAIN
+        AV_PKT_DATA_DISPLAYMATRIX
+        AV_PKT_DATA_STEREO3D
+        AV_PKT_DATA_AUDIO_SERVICE_TYPE
+        AV_PKT_DATA_QUALITY_STATS
+        AV_PKT_DATA_FALLBACK_TRACK
+        AV_PKT_DATA_CPB_PROPERTIES
+        AV_PKT_DATA_SKIP_SAMPLES
+        AV_PKT_DATA_JP_DUALMONO
+        AV_PKT_DATA_STRINGS_METADATA
+        AV_PKT_DATA_SUBTITLE_POSITION
+        AV_PKT_DATA_MATROSKA_BLOCKADDITIONAL
+        AV_PKT_DATA_WEBVTT_IDENTIFIER
+        AV_PKT_DATA_WEBVTT_SETTINGS
+        AV_PKT_DATA_METADATA_UPDATE
+        AV_PKT_DATA_MPEGTS_STREAM_ID
+        AV_PKT_DATA_MASTERING_DISPLAY_METADATA
+   
     cdef AVCodec* av_codec_next(AVCodec*)
     cdef int av_codec_is_encoder(AVCodec*)
     cdef int av_codec_is_decoder(AVCodec*)
@@ -157,6 +193,7 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         char *name
         char *long_name
         int props
+    cdef const AVCodecDescriptor *av_codec_get_codec_descriptor(const AVCodecContext *avctx);
         
     cdef AVCodec* avcodec_find_decoder(AVCodecID id)
     cdef AVCodec* avcodec_find_encoder(AVCodecID id)
@@ -246,7 +283,24 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         void (*destruct)(AVPacket*)
         int64_t pos
         int64_t convergence_duration
-
+    cdef struct MpegEncContext:
+        pass
+    ctypedef struct AVHWAccel:
+        const char *name;
+        AVMediaType type;
+        AVCodecID id;
+        AVPixelFormat pix_fmt;
+        int capabilities;
+        AVHWAccel *next;
+        int (*alloc_frame)(AVCodecContext *avctx, AVFrame *frame);
+        int (*start_frame)(AVCodecContext *avctx, const uint8_t *buf, uint32_t buf_size);
+        int (*decode_slice)(AVCodecContext *avctx, const uint8_t *buf, uint32_t buf_size);
+        int (*end_frame)(AVCodecContext *avctx);
+        int frame_priv_data_size;
+        void (*decode_mb)(MpegEncContext *s);
+        int (*init)(AVCodecContext *avctx);
+        int (*uninit)(AVCodecContext *avctx);
+        int priv_data_size;
     cdef int avcodec_decode_video2(
         AVCodecContext *ctx,
         AVFrame *frame,
@@ -283,15 +337,75 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         int buf_size,
         int align
     )
-    
+    cdef enum AVFieldOrder:
+        pass
+    cdef enum AVColorRange:
+        pass
+    cdef enum AVColorPrimaries:
+        pass
+    cdef enum AVColorTransferCharacteristic:
+        pass
+    cdef enum AVColorSpace:
+        pass
+    cdef enum AVChromaLocation:
+        pass
+    ctypedef struct AVCodecParameters:
+        AVMediaType codec_type;
+        AVCodecID   codec_id;
+        uint32_t         codec_tag;
+        uint8_t *extradata;
+        int      extradata_size;
+        int format;
+        int64_t bit_rate;
+        int bits_per_coded_sample;
+        int bits_per_raw_sample;
+        int profile;
+        int level;
+        int width;
+        int height;
+        AVRational sample_aspect_ratio;
+        AVFieldOrder                  field_order;
+        AVColorRange                  color_range;
+        AVColorPrimaries              color_primaries;
+        AVColorTransferCharacteristic color_trc;
+        AVColorSpace                  color_space;
+        AVChromaLocation              chroma_location;
+        int video_delay;
+        uint64_t channel_layout;
+        int      channels;
+        int      sample_rate;
+        int      block_align;
+        int      frame_size;
+        int initial_padding;
+        int trailing_padding;
+        int seek_preroll;
     cdef void avcodec_free_frame(AVFrame **frame)
-    
+    cdef int avcodec_parameters_to_context(AVCodecContext *codec, const AVCodecParameters *par);
+    cdef int avcodec_parameters_from_context(AVCodecParameters *par,const AVCodecContext *codec);
+    cdef void avcodec_parameters_free(AVCodecParameters **par);
+    cdef const AVClass *avcodec_get_frame_class();
+    cdef AVCodecParameters *avcodec_parameters_alloc();
+    cdef int avcodec_parameters_copy(AVCodecParameters *dst, const AVCodecParameters *src);
+    cdef void av_shrink_packet(AVPacket *pkt, int size);
+    cdef int av_grow_packet(AVPacket *pkt, int grow_by);
+    cdef int av_packet_from_data(AVPacket *pkt, uint8_t *data, int size);
     cdef void av_free_packet(AVPacket*)
     cdef void av_init_packet(AVPacket*)
+    cdef AVPacket *av_packet_alloc()
+    cdef void av_packet_free(AVPacket **pkt)
+    cdef int av_packet_ref(AVPacket *dst, const AVPacket *src);
     cdef void av_packet_unref(AVPacket *pkt)   
+    cdef void av_packet_rescale_ts(AVPacket *pkt, AVRational tb_src, AVRational tb_dst);
     cdef int av_copy_packet(AVPacket *dst, AVPacket *src)
     cdef int av_dup_packet(AVPacket *pkt)
-
+    cdef int av_packet_shrink_side_data(AVPacket *pkt, AVPacketSideDataType type,int size);
+    cdef uint8_t* av_packet_get_side_data(AVPacket *pkt, AVPacketSideDataType type,int *size);
+    cdef const char *av_packet_side_data_name(AVPacketSideDataType type);
+    cdef uint8_t* av_packet_new_side_data(AVPacket *pkt, AVPacketSideDataType type,int size);
+    cdef int av_copy_packet_side_data(AVPacket *dst, const AVPacket *src);
+    cdef uint8_t *av_packet_pack_dictionary(AVDictionary *dict, int *size);
+    cdef int av_packet_unpack_dictionary(const uint8_t *data, int size, AVDictionary **dict);
+    cdef void av_packet_free_side_data(AVPacket *pkt);
     cdef enum AVSubtitleType:
         SUBTITLE_NONE
         SUBTITLE_BITMAP
@@ -340,12 +454,31 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         AVCodecContext *ctx, 
         AVCodec *codec
      )
-    
+    cdef AVCodec *avcodec_find_decoder(AVCodecID id);
+    cdef AVCodec *avcodec_find_decoder_by_name(const char *name);
+    cdef int avcodec_send_packet(AVCodecContext *avctx, const AVPacket *avpkt);
+    cdef int avcodec_receive_frame(AVCodecContext *avctx, AVFrame *frame);
+    cdef int avcodec_send_frame(AVCodecContext *avctx, const AVFrame *frame);
+    cdef int avcodec_receive_packet(AVCodecContext *avctx, AVPacket *avpkt);
+    cdef void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode);
+    cdef int avcodec_default_execute(AVCodecContext *c, int (*func)(AVCodecContext *c2, void *arg2),void *arg, int *ret, int count, int size);
+    cdef int avcodec_default_execute2(AVCodecContext *c, int (*func)(AVCodecContext *c2, void *arg2, int, int),void *arg, int *ret, int count);
+ 
+    cdef int av_get_exact_bits_per_sample(AVCodecID codec_id);
+    cdef int av_get_audio_frame_duration(AVCodecContext *avctx, int frame_bytes);
+    cdef int av_get_audio_frame_duration2(AVCodecParameters *par, int frame_bytes);
+    cdef int av_get_bits_per_sample(AVCodecID codec_id);
     cdef int64_t av_frame_get_best_effort_timestamp(AVFrame *frame)
     cdef void avcodec_flush_buffers(AVCodecContext *ctx)
+    cdef void av_fast_padded_malloc(void *ptr, unsigned int *size, size_t min_size);
+    cdef void av_fast_padded_mallocz(void *ptr, unsigned int *size, size_t min_size);
     
      # TODO: avcodec_default_get_buffer is deprecated for avcodec_default_get_buffer2 in newer versions of FFmpeg
+    cdef int avcodec_default_get_buffer2(AVCodecContext *s, AVFrame *frame, int flags);
     cdef int avcodec_default_get_buffer(AVCodecContext *ctx, AVFrame *frame)
     cdef void avcodec_default_release_buffer(AVCodecContext *ctx, AVFrame *frame)
     
     
+    cdef unsigned int av_xiphlacing(unsigned char *s, unsigned int v);
+    cdef AVHWAccel *av_hwaccel_next(const AVHWAccel *hwaccel);
+    cdef void av_register_hwaccel(AVHWAccel *hwaccel);
