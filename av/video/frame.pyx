@@ -153,8 +153,14 @@ cdef class VideoFrame(Frame):
                 NULL
             )
 
-        cdef int *inv_tbl, *tbl, *rgbTbl
-        cdef int srcRange, dstRange, brightness, contrast, saturation
+        cdef int *inv_tbl
+        cdef int *tbl
+        cdef int *rgbTbl
+        cdef int srcRange
+        cdef int dstRange
+        cdef int brightness
+        cdef int contrast
+        cdef int saturation
         cdef int ret
         with nogil:
             ret = lib.sws_getColorspaceDetails(self.reformatter.ptr, &inv_tbl, &srcRange, &tbl, &dstRange, &brightness, &contrast, &saturation)

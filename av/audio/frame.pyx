@@ -123,14 +123,22 @@ cdef class AudioFrame(Frame):
     @classmethod
     def from_ndarray(cls, array):
         # TODO: We could stand to be more accepting.
-        if array.ndim != 1: raise ValueError('array must be one dimensional (i.e. mono audio)')
-        if array.dtype ==   'uint8':   format = 'u8'
-        elif array.dtype == 'int16': format = 's16'
-        elif array.dtype == 'int32': format = 's32'
-        elif array.dtype == 'int64': format = 's64'
-        else: raise ValueError('array dtype must be one of: uint8, int16, int32, int64')
+        if array.ndim == 1: layout = AudioLayout(1)
+        elif array.ndim == 2: layout = AudioLayout(array.shape[1])
+        else:raise ValueError('array must be one or two dimensional')
 
-        frame = cls(format, 'mono', array.shape[0])
-        frame.planes[0].update(array)
+        if array.dtype ==   'uint8':  format = 'u8p'
+        elif array.dtype == 'int16':  format = 's16p'
+        elif array.dtype == 'int32':  format = 's32p'
+        elif array.dtype == 'int64':  format = 's64p'
+        elif array.dtype == 'float32':format = 'fltp'
+        elif array.dtype == 'float64':format = 'dblp'
+        else: raise ValueError('array dtype must be one of: uint8, int16, int32, int64, float32, float64')
+        frame = cls(format, layout, array.shape[0])
+        if array.ndim == 1:
+            frame.planes[0].update(array)
+        else:
+            for i in range(array.shape[1]):
+                frame.planes[i].update(array[::,i])
 
         return frame

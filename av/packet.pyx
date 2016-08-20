@@ -1,5 +1,5 @@
 cimport libav as lib
-from av.utils cimport avrational_to_faction
+from av.utils cimport avrational_to_fraction
 
 
 cdef class Packet(object):
@@ -66,7 +66,7 @@ cdef class Packet(object):
     property time_base:
 
         def __get__(self):
-            return avrational_to_faction(&self._time_base)
+            return avrational_to_fraction(&self._time_base)
 
         def __set__(self, value):
             self._time_base.num = value.numerator

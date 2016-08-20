@@ -69,6 +69,21 @@ cdef class Stream(object):
             self.name or '<nocodec>',
             id(self),
         )
+    property discard:
+        def __get__(self):
+            return self._stream.discard
+        def __set__(self,x):
+            if x == 'none': self._stream.discard = lib.AVDISCARD_NONE
+            elif x == 'default':self._stream.discard = lib.AVDISCARD_DEFAULT
+            elif x == 'nonref':self._stream.discard = lib.AVDISCARD_NONREF
+            elif x == 'bidir':self._stream.discard = lib.AVDISCARD_BIDIR
+            elif x == 'nonintra':self._stream.discard = lib.AVDISCARD_NONINTRA
+            elif x == 'nonkey':self._stream.discard = lib.AVDISCARD_NONKEY
+            elif x == 'all':self._stream.discard = lib.AVDISCARD_ALL
+            elif x in (-16,0,8,16,24,32,48):
+                self._stream.discard = x
+
+
     property id:
         def __get__(self): return self._stream.id
         def __set__(self, v):
