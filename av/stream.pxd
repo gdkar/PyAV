@@ -18,8 +18,8 @@ cdef class Stream(object):
 
     # CodecContext attributes.
     cdef lib.AVCodecContext *_codec_context
-    cdef lib.AVCodec *_codec
-    cdef lib.AVDictionary *_codec_options
+    cdef lib.AVCodec        *_codec
+    cdef lib.AVDictionary   *_codec_options
     
     # Private API.
     cdef _init(self, Container, lib.AVStream*)

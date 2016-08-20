@@ -52,6 +52,16 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         AV_CODEC_ID_NONE
         AV_CODEC_ID_MPEG2VIDEO
         AV_CODEC_ID_MPEG1VIDEO
+
+    cdef enum AVDiscard:
+        AVDISCARD_NONE
+        AVDISCARD_DEFAULT
+        AVDISCARD_NONREF
+        AVDISCARD_BIDIR
+        AVDISCARD_NONINTRA
+        AVDISCARD_NONKEY
+        AVDISCARD_ALL
+
     cdef int  av_codec_get_lowres(const AVCodecContext *avctx);
     cdef void av_codec_set_lowres(AVCodecContext *avctx, int val);
 

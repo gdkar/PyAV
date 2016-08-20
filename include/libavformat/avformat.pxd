@@ -2,7 +2,9 @@ from libc.stdint cimport int64_t, uint64_t
 
 
 cdef extern from "libavformat/avformat.pyav.h" nogil:
-
+    
+    cdef enum AVDiscard:
+        pass
     cdef int   avformat_version()
     cdef char* avformat_configuration()
     cdef char* avformat_license()
@@ -51,6 +53,8 @@ cdef extern from "libavformat/avformat.pyav.h" nogil:
         int64_t start_time
         int64_t duration
         int64_t nb_frames
+        int     disposition
+        AVDiscard discard
         int64_t cur_dts
         
         AVDictionary *metadata

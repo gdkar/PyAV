@@ -14,10 +14,10 @@ cdef class AudioFifo:
     def __repr__(self):
         return '<av.{:s} nb_samples:{} {}hz {:s} {:s} at 0x{:x}'.format(
                 self.__class__.__name__,
-                self.samples,
-                self.rate,
-                self.format,
-                self.layout,
+                self.samples or 0,
+                self.rate or 0,
+                self.format or 'no format',
+                self.layout or 'no layout',
                 id(self)
                 )
     def __cinit__(self):
@@ -96,6 +96,10 @@ cdef class AudioFifo:
         
         return frame
     def __len__(self): return self.samples
+    property next_pts:
+        def __get__(self):
+            if self.last_pts != lib.AV_NOPTS_VALUE:
+                return self.last_pts - self.pts_offset
     property samples:
         """Number of audio samples (per channel) """
         def __get__(self):
