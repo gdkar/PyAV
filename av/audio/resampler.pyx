@@ -25,7 +25,7 @@ cdef class AudioResampler(object):
         lib.swr_free(&self.ptr)
 
     cpdef resample(self, AudioFrame frame):
-        
+
         # Take source settings from the first frame.
         if (not self.src_format or not self.src_layout or not self.src_rate):
             if not frame:
@@ -50,7 +50,7 @@ cdef class AudioResampler(object):
         #     handle_output(output, out_samples);
         #     av_freep(&output);
         # }
-        
+
         # Estimate out how many samples this will create; it will be high.
         # My investigations say that this swr_get_delay is not required, but
         # it is in the example loop, and avresample (as opposed to swresample)
@@ -96,5 +96,5 @@ cdef class AudioResampler(object):
         # only an estimate.
         output._recalc_linesize()
         return output
-        
+
 

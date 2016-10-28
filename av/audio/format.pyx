@@ -14,7 +14,7 @@ cdef AudioFormat get_audio_format(lib.AVSampleFormat c_format):
 
 
 cdef class AudioFormat(object):
-    
+
     """Descriptor of audio formats."""
 
     def __cinit__(self, name):
@@ -58,7 +58,7 @@ cdef class AudioFormat(object):
         """
         def __get__(self):
             return lib.av_get_bytes_per_sample(self.sample_fmt)
-    
+
     property bits:
         """Number of bits per sample.
 
