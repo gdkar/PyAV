@@ -8,11 +8,11 @@ from av.packet cimport Packet
 
 
 cdef class Stream(object):
-    
+
     # Stream attributes.
     cdef ContainerProxy _container
     cdef _weak_container
-    
+
     cdef lib.AVStream *_stream
     cdef readonly dict metadata
 
@@ -20,7 +20,7 @@ cdef class Stream(object):
     cdef lib.AVCodecContext *_codec_context
     cdef lib.AVCodec        *_codec
     cdef lib.AVDictionary   *_codec_options
-    
+
     # Private API.
     cdef _init(self, Container, lib.AVStream*)
     cdef _setup_frame(self, Frame)

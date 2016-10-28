@@ -11,7 +11,7 @@ cdef class AudioStream(Stream):
 
     cdef _init(self, Container container, lib.AVStream *stream):
         Stream._init(self, container, stream)
-        
+
         # Sometimes there isn't a layout set, but there are a number of
         # channels. Assume it is the default layout.
         self.layout = get_audio_layout(self._codec_context.channels, self._codec_context.channel_layout)
@@ -19,7 +19,7 @@ cdef class AudioStream(Stream):
             self._codec_context.channel_layout = self.layout.layout
 
         self.format = get_audio_format(self._codec_context.sample_fmt)
-    
+
     def __repr__(self):
         return '<av.%s #%d %s at %dHz, %s, %s at 0x%x>' % (
             self.__class__.__name__,
@@ -34,7 +34,7 @@ cdef class AudioStream(Stream):
     property frame_size:
         """Number of samples per channel in an audio frame."""
         def __get__(self): return self._codec_context.frame_size
-        
+
     property rate:
         """samples per second """
         def __get__(self): return self._codec_context.sample_rate
@@ -43,7 +43,7 @@ cdef class AudioStream(Stream):
     property channels:
         def __get__(self):
             return self._codec_context.channels
-        
+
     cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
         if not self.next_frame: self.next_frame = alloc_audio_frame()
         cdef int completed_frame = 0
@@ -52,13 +52,13 @@ cdef class AudioStream(Stream):
         self.next_frame.ptr.pts = lib.av_frame_get_best_effort_timestamp ( self.next_frame.ptr )
         cdef AudioFrame frame = self.next_frame
         self.next_frame       = None
-        
+
         frame._init_properties()
         return frame
-    
+
     cpdef encode(self, AudioFrame input_frame):
         """Encodes a frame of audio, returns a packet if one is ready.
-        The output packet does not necessarily contain data for the most recent frame, 
+        The output packet does not necessarily contain data for the most recent frame,
         as encoders can delay, split, and combine input frames internally as needed.
         If called with with no args it will flush out the encoder and return the buffered
         packets until there are none left, at which it will return None.
@@ -96,7 +96,7 @@ cdef class AudioStream(Stream):
             # Remember that the AudioFifo time_base is always 1/sample_rate!
             if fifo_frame.ptr.pts != lib.AV_NOPTS_VALUE:
                 fifo_frame.ptr.pts = lib.av_rescale_q(
-                    fifo_frame.ptr.pts, 
+                    fifo_frame.ptr.pts,
                     fifo_frame._time_base,
                     self._codec_context.time_base
                 )
@@ -106,7 +106,7 @@ cdef class AudioStream(Stream):
                     self._codec_context.sample_rate,
                     self._codec_context.frame_size,
                 )
-                
+
         err_check(lib.avcodec_encode_audio2(
             self._codec_context,
             &packet.struct,
@@ -115,7 +115,7 @@ cdef class AudioStream(Stream):
         ))
         if not got_packet:
             return
-        
+
         # Rescale some times which are in the codec's time_base to the
         # stream's time_base.
         if packet.struct.pts != lib.AV_NOPTS_VALUE:
@@ -136,16 +136,16 @@ cdef class AudioStream(Stream):
                 self._codec_context.time_base,
                 self._stream.time_base
             )
-           
+
         # `coded_frame` is "the picture in the bitstream"; does this make
-        # sense for audio?  
+        # sense for audio?
         if self._codec_context.coded_frame:
             if self._codec_context.coded_frame.key_frame:
                 packet.struct.flags |= lib.AV_PKT_FLAG_KEY
 
         packet.struct.stream_index = self._stream.index
         packet.stream = self
-        
+
         return packet
-        
+
 
