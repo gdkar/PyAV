@@ -178,7 +178,7 @@ cdef extern from "libavutil/channel_layout.h" nogil:
     cdef char* av_get_channel_name(uint64_t channel)
     cdef char* av_get_channel_description(uint64_t channel)
 
-    
+
 cdef extern from "libavutil/fifo.h" nogil:
     ctypedef struct AVFifoBuffer:
         uint8_t *buffer
@@ -187,7 +187,7 @@ cdef extern from "libavutil/fifo.h" nogil:
         uint8_t *end
         unsigned int rndx
         unsigned int wndx
-    
+
     cdef AVFifoBuffer *av_fifo_alloc(unsigned int size)
     cdef AVFifoBuffer *av_fifo_alloc_array(size_t nmemb, size_t size)
     cdef void av_fifo_free(AVFifoBuffer *f)
@@ -217,7 +217,7 @@ cdef extern from "libavutil/audio_fifo.h" nogil:
         int            channels
         AVSampleFormat sample_fmt
         int            sample_size
-    
+
     cdef void av_audio_fifo_free(AVAudioFifo *af)
 
     cdef AVAudioFifo* av_audio_fifo_alloc(
@@ -237,11 +237,23 @@ cdef extern from "libavutil/audio_fifo.h" nogil:
         void **data,
         int nb_samples
     )
+    cdef int av_audio_fifo_peek(
+        AVAudioFifo *af,
+        void **data,
+        int nb_samples
+    )
+    cdef int av_audio_fifo_peek_at(
+        AVAudioFifo *af,
+        void **data,
+        int nb_samples,
+        int offset,
+    )
 
     cdef int av_audio_fifo_size(AVAudioFifo *af)
     cdef int av_audio_fifo_space (AVAudioFifo *af)
-
-
+    cdef void av_audio_fifo_reset(AVAudioFifo *af)
+    cdef int av_audio_fifo_drain(AVAudioFifo *af, int nb_samples)
+    cdef int av_audio_fifo_realloc(AVAudioFifo *af, int nb_samples)
 cdef extern from "stdarg.h" nogil:
 
     # For logging. Should really be in another PXD.

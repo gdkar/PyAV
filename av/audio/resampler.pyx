@@ -10,7 +10,13 @@ from av.utils cimport err_check
 
 cdef class AudioResampler(object):
 
+    """An Audio Resampler."""
     def __cinit__(self, format=None, layout=None, rate=None):
+        """:param AudioFormat or str: the output format
+        :param AudioLayout or strlayout: the output layout
+        :param int or None rate: the output sample rate
+        """
+
         if format is not None:
             self.format = format if isinstance(format, AudioFormat) else AudioFormat(format)
         else: self.format = None
@@ -25,6 +31,11 @@ cdef class AudioResampler(object):
         lib.swr_free(&self.ptr)
 
     cpdef resample(self, AudioFrame frame):
+        """Resample an audio frame, and return the result
+
+        :param AudioFrame frame: input frame
+        :returns: AudioFrame of output or None
+        """
 
         # Take source settings from the first frame.
         if (not self.src_format or not self.src_layout or not self.src_rate):
