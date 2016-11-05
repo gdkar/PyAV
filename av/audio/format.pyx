@@ -30,14 +30,14 @@ cdef class AudioFormat(object):
 
         cdef lib.AVSampleFormat sample_fmt = lib.av_get_sample_fmt(name)
         if sample_fmt < 0:
-            raise ValueError('not a sample format: %r' % name)
+            raise ValueError('not a sample format: {:r}'.format( name))
         self._init(sample_fmt)
 
     cdef _init(self, lib.AVSampleFormat sample_fmt):
         self.sample_fmt = sample_fmt
 
     def __repr__(self):
-        return '<av.AudioFormat %s>' % (self.name)
+        return '<av.AudioFormat {}s>'.format(self.name)
 
     property name:
         """Canonical name of the sample format.

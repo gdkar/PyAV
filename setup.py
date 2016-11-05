@@ -34,7 +34,7 @@ msvc_compiler_classes = tuple([cls for cls in (MSVCCompiler, MSVC9Compiler,
                                                MSVC14Compiler) if cls is not None])
 
 try:
-    from Cython.Build import cythonize
+    from Cython.Build import Cythonize,cythonize
 except ImportError:
     # We don't need Cython all the time; just for building from original source.
     cythonize = None

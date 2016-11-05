@@ -20,4 +20,6 @@ cdef class AudioFifo:
     cdef lib.AVRational _time_base
     cpdef write(self, AudioFrame frame)
     cpdef read(self, unsigned int nb_samples=*, bint partial=*)
-
+    cpdef peek(self, unsigned int nb_samples=*, bint partial=*)
+    cpdef drain(self, unsigned int nb_samples)
+    cpdef peek_at(self, unsigned int nb_samples=*,unsigned int offset=*, bint partial=*)
