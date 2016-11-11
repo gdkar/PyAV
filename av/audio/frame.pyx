@@ -107,7 +107,7 @@ cdef class AudioFrame(Frame):
         def __get__(self):
             if self.ptr != NULL:
                 return self.ptr.sample_rate
-    def to_nd_array(self,**kwargs):
+    def to_ndarray(self,**kwargs):
         import numpy as np
         cdef str fname = self.format.packed.name
         if fname == 'dbl': dtype=np.float64
