@@ -34,8 +34,8 @@ for src_path in args.path:
     frames = frame_iter(video)
     sum_ = None
     for fi, frame in enumerate(frame_iter(video)):
-        if sum_ is None: sum_ = frame.to_nd_array().astype(float)
-        else:            sum_ += frame.to_nd_array().astype(float)
+        if sum_ is None: sum_ = frame.to_ndarray().astype(float)
+        else:            sum_ += frame.to_ndarray().astype(float)
     sum_ /= (fi + 1)
     dst_path = os.path.join('sandbox', os.path.basename(src_path) + '-avg.jpeg')
     print('writing', (fi + 1), 'frames to', dst_path)
