@@ -226,7 +226,7 @@ cdef class VideoFrame(Frame):
         from PIL import Image
         return Image.frombuffer("RGB", (self.width, self.height), self.reformat(format="rgb24", **kwargs).planes[0], "raw", "RGB", 0, 1)
 
-    def to_nd_array(self, **kwargs):
+    def to_ndarray(self, **kwargs):
         """Get a numpy array of this frame.
 
         Any ``**kwargs`` are passed to :meth:`VideoFrame.reformat`.
@@ -252,7 +252,7 @@ cdef class VideoFrame(Frame):
         """Get an RGB ``QImage`` of this frame.
 
         Any ``**kwargs`` are passed to :meth:`VideoFrame.reformat`.
-        
+
         Returns a ``(VideoFrame, QImage)`` tuple, where the ``QImage`` references
         the data in the ``VideoFrame``.
         """
