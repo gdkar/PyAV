@@ -4,7 +4,7 @@
 
 #include "libavutil/mem.h"
 
-void *av_calloc(size_t nmemb, size_t size)
+static inline void *av_calloc(size_t nmemb, size_t size)
 {
     if (size <= 0 || nmemb >= INT_MAX / size)
         return NULL;

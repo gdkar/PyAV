@@ -5,7 +5,7 @@
     #include <libswresample/swresample.h>
 
     // swr does not have the equivalent so this does nothing
-    void swr_close(SwrContext *ctx) {};
+    inline void swr_close(SwrContext *ctx) {};
 
 #else
 
@@ -52,13 +52,13 @@
 
 
 #ifndef PYAV_HAVE_LIBAVRESAMPLE
-    int avresample_version() { return -1; }
-    const char* avresample_configuration() { return ""; }
-    const char* avresample_license() { return ""; }
+    inline int avresample_version() { return -1; }
+    inline const char* avresample_configuration() { return ""; }
+    inline const char* avresample_license() { return ""; }
 #endif
 
 #ifndef PYAV_HAVE_LIBSWRESAMPLE
-    int swresample_version() { return -1; }
-    const char* swresample_configuration() { return ""; }
-    const char* swresample_license() { return ""; }
+    inline int swresample_version() { return -1; }
+    inline const char* swresample_configuration() { return ""; }
+    inline const char* swresample_license() { return ""; }
 #endif
