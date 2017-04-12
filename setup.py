@@ -623,6 +623,7 @@ class CythonizeCommand(Command):
                         c_string_type='str',
                         c_string_encoding='ascii',
                         embedsignature=True,
+                        language_level=3,
                     ),
                     build_dir='src',
                     include_path=ext.include_dirs,
