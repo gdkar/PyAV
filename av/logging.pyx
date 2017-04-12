@@ -171,7 +171,7 @@ cdef bint _pop_record(_Record *dst):
 
     if record == NULL:
         return False
-    
+
     # This free is what makes this whole copying thing worth it, since it
     # heavily simplifies a few of the lower functions, since their records can
     # be on the stack, and the queue functions fully deal with free-ing memory.
@@ -258,7 +258,7 @@ cdef int async_log_callback(void *arg) except -1:
         if inited:
             try:
                 level = level_map.get(record.level, 20)
-                item_name = record.name if record.name else ''
+                item_name = str(record.name) if record.name else ''
                 logger_name = 'libav.' + item_name if item_name else 'libav.generic'
                 logger = logging.getLogger(logger_name)
                 logger.log(level, record.message.strip())
