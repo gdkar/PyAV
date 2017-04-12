@@ -108,9 +108,9 @@ class TestVideoFrameTransforms(TestCase):
 
 class TestVideoFrameConveniences(TestCase):
 
-    def test_basic_to_nd_array(self):
+    def test_basic_to_ndarray(self):
         frame = VideoFrame(640, 480, 'rgb24')
-        array = frame.to_nd_array()
+        array = frame.to_ndarray()
         self.assertEqual(array.shape, (480, 640, 3))
 
 
