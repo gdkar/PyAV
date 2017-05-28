@@ -27,6 +27,23 @@ def get_frame_count(f, stream):
 class FrameGrabber(Q.QObject):
     frame_ready = Q.pyqtSignal(object, object)
     update_frame_range = Q.pyqtSignal(object)
+    _skip_limit = 64
+    _cache_limit = 256
+
+    @property
+    def skip_limit(self):
+        return self._skip_limit
+    @skip_limit.setter
+    def skip_limit(self,val):
+        self._skip_limit = int(val)
+
+    @property
+    def cache_limit(self):
+        return self._cache_limit
+    @cache_limit.setter
+    def cache_limit(self,val):
+        self._cache_limit = int(val)
+
     def __init__(self, parent =None):
         super(FrameGrabber, self).__init__(parent)
         self.file = None
@@ -37,6 +54,7 @@ class FrameGrabber(Q.QObject):
         self.pts_seen = False
         self.nb_frames = None
         self.frame_cache=dict()
+        self.frame_gen = None
         self.last_seen=-1
         self.last_shown=-1
         self.rate = None
@@ -49,14 +67,19 @@ class FrameGrabber(Q.QObject):
         self.pts_seen = False
         for packet in self.file.demux(self.stream):
             #print("    pkt", packet.pts, packet.dts, packet)
-            if packet.pts:self.pts_seen = True
+            if packet.pts:
+                self.pts_seen = True
             for frame in packet.decode():
                 if frame_index is None:
-                    if self.pts_seen:pts = frame.pts
+                    if self.pts_seen:
+                        pts = frame.pts
                     else:pts = frame.dts
-                    if not pts is None:frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
-                elif not frame_index is None:frame_index += 1
+                    if not pts is None:
+                        frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
+                elif not frame_index is None:
+                    frame_index += 1
                 yield frame_index, frame
+
     @Q.pyqtSlot(object)
     def request_frame(self, target_frame):
         frame = self.get_frame(target_frame)
@@ -75,17 +98,18 @@ class FrameGrabber(Q.QObject):
         self.frame_ready.emit(img, target_frame)
 
     def get_frame(self, target_frame):
-
-        if target_frame != self.active_frame:return
+        if target_frame != self.active_frame:
+            return
         if target_frame in self.frame_cache:
             return self.frame_cache[target_frame]
-        if (not list(self.frame_cache.keys()) or target_frame>min(self.frame_cache.keys())) and target_frame < self.last_seen + 64:
-            next_frame = self.next_frame()
-            for i, (frame_index, frame) in enumerate(next_frame):
-                self.frame_cache[frame_index]=frame
-                self.last_seen = frame_index
-                if frame_index >= target_frame or i >= 64:
-                    next_frame.close()
+        if ((not list(self.frame_cache.keys()) or target_frame>min(self.frame_cache.keys())) and
+            (not self.frame_gen or target_frame < self.last_seen + self.skip_limit):
+            if not self.frame_gen:
+                self.frame_gen = self.next_frame()
+            for i, (frame_index, frame) in enumerate(self.frame_gen):
+                self.frame_cache[frame_index], self.last_seen = frame, frame_index
+                if frame_index > target_frame or i >= self.skip_limit:
+                    break
                 if frame_index == target_frame:
                     return frame
         print(('seeking to', target_frame))
@@ -99,13 +123,18 @@ class FrameGrabber(Q.QObject):
             # convert seek_frame to pts
             target_sec = seek_frame * 1/rate
             target_pts = int(target_sec / time_base) + self.start_time
-            if original_target_frame_pts is None:original_target_frame_pts = target_pts
+            if original_target_frame_pts is None:
+                original_target_frame_pts = target_pts
             self.stream.seek(int(target_pts))
+            self.frame_cache.clear()
             frame_index = None
-            for index in list(self.frame_cache.keys()):
-                if abs(index-target_frame>256):
-                    del self.frame_cache[index]
-            for i, (frame_index, frame) in enumerate(self.next_frame()):
+#            for index in list(self.frame_cache.keys()):
+#                if abs(index-target_frame>1024):
+#                    del self.frame_cache[index]
+            if self.frame_gen:
+                self.frame_gen.close()
+                self.frame_gen = self.next_frame()
+            for i, (frame_index, frame) in enumerate(self.frame_gen):
                 self.frame_cache[frame_index] = frame
                 self.last_seen = frame_index
                 # optimization if the time slider has changed, the requested frame no longer valid
@@ -113,12 +142,15 @@ class FrameGrabber(Q.QObject):
                 print(("   ", i, "at frame", frame_index, "at ts:", frame.pts,frame.dts,"target:", target_pts, 'orig', original_target_frame_pts))
                 if frame_index == target_frame:
                     return self.frame_cache[target_frame]
-                if frame_index is None:pass
-                if frame_index >= target_frame:break
+                if frame_index is None:
+                    pass
+                if frame_index >= target_frame:
+                    break
             # Check if we over seeked, if we over seekd we need to seek to a earlier time
             # but still looking for the target frame
             if frame_index != target_frame:
-                if frame_index is None:over_seek = '?'
+                if frame_index is None:
+                    over_seek = '?'
                 else:
                     over_seek = frame_index - target_frame
                     if frame_index > target_frame:
@@ -171,7 +203,7 @@ class FrameGrabber(Q.QObject):
 
             for frame_index, frame in self.next_frame():
                 print((frame_index, frame))
-                continue
+#                continue
 
             if not frame_index is None:
                 break
@@ -356,6 +388,7 @@ class VideoPlayerWidget(Q.QWidget):
         if mime.hasUrls():
             path = str(mime.urls()[0].path())
             self.set_file(path)
+
     def closeEvent(self, event):
 
         self.frame_grabber.active_frame = -1
