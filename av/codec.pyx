@@ -152,7 +152,7 @@ while ptr:
 def dump_codecs():
     """Print information about availible codecs."""
 
-    print '''Codecs:
+    print('''Codecs:
  D..... = Decoding supported
  .E.... = Encoding supported
  ..V... = Video codec
@@ -161,7 +161,7 @@ def dump_codecs():
  ...I.. = Intra frame-only codec
  ....L. = Lossy compression
  .....S = Lossless compression
- ------'''
+ ------''')
     for name in sorted(codecs_availible):
         try:
             e_codec = Codec(name, 'w')
@@ -172,7 +172,7 @@ def dump_codecs():
         except ValueError:
             d_codec = None
         codec = e_codec or d_codec
-        print ' %s%s%s%s%s%s %-18s %s' % (
+        print(' %s%s%s%s%s%s %-18s %s' % (
             '.D'[bool(d_codec)],
             '.E'[bool(e_codec)],
             codec.type[0].upper(),
@@ -181,5 +181,5 @@ def dump_codecs():
             '.S'[codec.lossless],
             codec.name,
             codec.long_name
-        )
+        ))
 
