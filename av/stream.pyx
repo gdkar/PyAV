@@ -34,13 +34,14 @@ cdef Stream build_stream(Container container, lib.AVStream *c_stream):
         py_stream = Stream.__new__(Stream, _cinit_bypass_sentinel)
     py_stream._init(container, c_stream)
     return py_stream
+
 cdef class Stream(object):
     def __cinit__(self, name):
         if name is _cinit_bypass_sentinel:return
         raise RuntimeError('cannot manually instatiate Stream')
     cdef _init(self, Container container, lib.AVStream *stream):
-        
-        self._container      = container.proxy        
+
+        self._container      = container.proxy
         self._weak_container = PyWeakref_NewRef(container, None)
         self._stream         = stream
         self._codec_context  = stream.codec
@@ -69,96 +70,110 @@ cdef class Stream(object):
             self.name or '<nocodec>',
             id(self),
         )
-    property discard:
-        def __get__(self):
-            return self._stream.discard
-        def __set__(self,x):
-            if x == 'none': self._stream.discard = lib.AVDISCARD_NONE
-            elif x == 'default':self._stream.discard = lib.AVDISCARD_DEFAULT
-            elif x == 'nonref':self._stream.discard = lib.AVDISCARD_NONREF
-            elif x == 'bidir':self._stream.discard = lib.AVDISCARD_BIDIR
-            elif x == 'nonintra':self._stream.discard = lib.AVDISCARD_NONINTRA
-            elif x == 'nonkey':self._stream.discard = lib.AVDISCARD_NONKEY
-            elif x == 'all':self._stream.discard = lib.AVDISCARD_ALL
-            elif x in (-16,0,8,16,24,32,48):
-                self._stream.discard = x
+    @property
+    def discard(self):
+        return self._stream.discard
+
+    @discard.setter
+    def discard(self,x):
+        if x == 'none': self._stream.discard = lib.AVDISCARD_NONE
+        elif x == 'default':self._stream.discard = lib.AVDISCARD_DEFAULT
+        elif x == 'nonref':self._stream.discard = lib.AVDISCARD_NONREF
+        elif x == 'bidir':self._stream.discard = lib.AVDISCARD_BIDIR
+        elif x == 'nonintra':self._stream.discard = lib.AVDISCARD_NONINTRA
+        elif x == 'nonkey':self._stream.discard = lib.AVDISCARD_NONKEY
+        elif x == 'all':self._stream.discard = lib.AVDISCARD_ALL
+        elif x in (-16,0,8,16,24,32,48):
+            self._stream.discard = x
 
 
-    property id:
-        def __get__(self): return self._stream.id
-        def __set__(self, v):
-            if v is None:
-                self._stream.id = 0
-            else:
-                self._stream.id = v
+    @property
+    def id(self):
+        return self._stream.id
 
-    property type:
-        def __get__(self): return media_type_to_string(self._codec_context.codec_type)
+    @id.setter
+    def id(self, v):
+        if v is None:
+            self._stream.id = 0
+        else:
+            self._stream.id = v
 
-    property name:
-        def __get__(self):
-            return self._codec.name if self._codec else None
+    @property
+    def type(self):
+        return media_type_to_string(self._codec_context.codec_type)
 
-    property long_name:
-        def __get__(self):
-            return self._codec.long_name if self._codec else None
-    
-    property profile:
-        def __get__(self):
-            if self._codec and lib.av_get_profile_name(self._codec, self._codec_context.profile):
-                return lib.av_get_profile_name(self._codec, self._codec_context.profile)
-            else:return None
-    property index:
-        def __get__(self): return self._stream.index
+    @property
+    def name(self):
+        return self._codec.name if self._codec else None
 
-    property time_base:
-        def __get__(self): return avrational_to_fraction(&self._stream.time_base)
+    @property
+    def long_name(self):
+        return self._codec.long_name if self._codec else None
 
-    property rate:
-        def __get__(self):
-            if self._codec_context:
-                return self._codec_context.ticks_per_frame * avrational_to_fraction(&self._codec_context.time_base)
-    
-    property average_rate:
-        def __get__(self):
-            return avrational_to_fraction(&self._stream.avg_frame_rate)
+    @property
+    def profile(self):
+        if self._codec and lib.av_get_profile_name(self._codec, self._codec_context.profile):
+            return lib.av_get_profile_name(self._codec, self._codec_context.profile)
+        else:return None
 
-    property start_time:
-        def __get__(self): return self._stream.start_time
-    property duration:
-        def __get__(self):
-            if self._stream.duration == lib.AV_NOPTS_VALUE: return None
-            return self._stream.duration
+    @property
+    def index(self):
+        return self._stream.index
+    @property
+    def time_base(self):
+        return avrational_to_fraction(&self._stream.time_base)
+    @property
+    def rate(self):
+        if self._codec_context:
+            return self._codec_context.ticks_per_frame * avrational_to_fraction(&self._codec_context.time_base)
+    @property
+    def average_rate(self):
+        return avrational_to_fraction(&self._stream.avg_frame_rate)
+    @property
+    def start_time(self):
+        return self._stream.start_time
+    @property
+    def duration(self):
+        if self._stream.duration == lib.AV_NOPTS_VALUE: return None
+        return self._stream.duration
+    @property
+    def frames(self):
+        return self._stream.nb_frames
+    @property
+    def bit_rate(self):
+        return self._codec_context.bit_rate if self._codec_context and self._codec_context.bit_rate > 0 else None
 
-    property frames:
-        def __get__(self): return self._stream.nb_frames
+    @bit_rate.setter
+    def bit_rate(self, int value):
+        self._codec_context.bit_rate = value
 
-    property bit_rate:
-        def __get__(self):
-            return self._codec_context.bit_rate if self._codec_context and self._codec_context.bit_rate > 0 else None
-        def __set__(self, int value):
-            self._codec_context.bit_rate = value
+    @property
+    def max_bit_rate(self):
+        if self._codec_context and self._codec_context.rc_max_rate > 0:
+            return self._codec_context.rc_max_rate
+        else:
+            return None
+    @property
+    def bit_rate_tolerance(self):
+        return self._codec_context.bit_rate_tolerance if self._codec_context else None
 
-    property max_bit_rate:
-        def __get__(self):
-            if self._codec_context and self._codec_context.rc_max_rate > 0:
-                return self._codec_context.rc_max_rate
-            else:
-                return None
-            
-    property bit_rate_tolerance:
-        def __get__(self):
-            return self._codec_context.bit_rate_tolerance if self._codec_context else None
-        def __set__(self, int value):
-            self._codec_context.bit_rate_tolerance = value
-    property language:
-        def __get__(self): return self.metadata.get('language')
+    @bit_rate_tolerance.setter
+    def bit_rate_tolerance(self, int value):
+        self._codec_context.bit_rate_tolerance = value
+
+    @property
+    def language(self):
+        return self.metadata.get('language')
 
     # TODO: Does it conceptually make sense that this is on streams, instead
     # of on the container?
-    property thread_count:
-        def __get__(self):            return self._codec_context.thread_count
-        def __set__(self, int value): self._codec_context.thread_count = value
+    @property
+    def thread_count(self):
+        return self._codec_context.thread_count
+
+    @thread_count.setter
+    def thread_count(self, int value):
+        self._codec_context.thread_count = value
 
     cpdef decode(self, Packet packet, int count=0):
         """Decode a list of :class:`.Frame` from the given :class:`.Packet`.
@@ -204,7 +219,7 @@ cdef class Stream(object):
         packet.struct.data = original_data
         packet.struct.size = original_size
         return decoded_objs
-    
+
     def seek(self, timestamp, mode='time', backward=True, any_frame=False):
         """
         Seek to the keyframe at timestamp.

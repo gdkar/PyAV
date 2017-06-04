@@ -73,8 +73,7 @@ cdef int64_t pyio_seek_gil(void *opaque, int64_t offset, int whence):
 
 cdef object _cinit_sentinel = object()
 
-cdef class ContainerProxy(object):
-
+cdef class ContainerProxy:
     def __init__(self, sentinel, Container container):
         cdef int res
         if sentinel is not _cinit_sentinel:
@@ -187,7 +186,7 @@ cdef class ContainerProxy(object):
 
 
 
-cdef class Container(object):
+cdef class Container:
     def __cinit__(self, sentinel, file_, format_name, options):
         if sentinel is not _cinit_sentinel:
             raise RuntimeError('cannot construct base Container')
@@ -223,7 +222,7 @@ def open(file, mode=None, format=None, options=None):
     e.g.::
 
         >>> # Open webcam on OS X.
-        >>> av.open(format='avfoundation', file='0') # doctest: SKIP
+        >>> av.open(format='avfoundation', file='0') # doctest: Skip
 
     """
 

@@ -34,7 +34,7 @@
     #define swr_is_initialized(ctx) avresample_is_open(ctx)
     #define swr_drop_output(ctx,count) \
       avresample_read((ctx),NULL,count)
-    int swr_inject_silence(AVAudioResampleContext *ctx, int count){
+    static inline int swr_inject_silence(AVAudioResampleContext *ctx, int count){
       enum AVSampleFormat in_format;
       int64_t             in_layout;
       int                 in_linesize;
@@ -49,16 +49,14 @@
     }
 #endif
 
-
-
 #ifndef PYAV_HAVE_LIBAVRESAMPLE
-    inline int avresample_version() { return -1; }
-    inline const char* avresample_configuration() { return ""; }
-    inline const char* avresample_license() { return ""; }
+    static inline int avresample_version() { return -1; }
+    static inline const char* avresample_configuration() { return ""; }
+    static inline const char* avresample_license() { return ""; }
 #endif
 
 #ifndef PYAV_HAVE_LIBSWRESAMPLE
-    inline int swresample_version() { return -1; }
-    inline const char* swresample_configuration() { return ""; }
-    inline const char* swresample_license() { return ""; }
+    static inline int swresample_version() { return -1; }
+    static inline const char* swresample_configuration() { return ""; }
+    static inline const char* swresample_license() { return ""; }
 #endif

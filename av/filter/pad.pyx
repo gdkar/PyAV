@@ -6,11 +6,11 @@ cdef object _cinit_sentinel = object()
 
 
 cdef class FilterPad(object):
-    
+
     def __cinit__(self, sentinel):
         if sentinel is not _cinit_sentinel:
             raise RuntimeError('cannot construct FilterPad')
-    
+
     def __repr__(self):
         return '<av.FilterPad %s.%s[%d]: %s (%s)>' % (
             self.filter.name,
@@ -19,24 +19,21 @@ cdef class FilterPad(object):
             self.name,
             self.type,
         )
-
-    property is_output:
-        def __get__(self):
-            return not self.is_input
-
-    property name:
-        def __get__(self):
-            return lib.avfilter_pad_get_name(self.base_ptr, self.index)
-    
-    property type:
-        def __get__(self):
-            return media_type_to_string(lib.avfilter_pad_get_type(self.base_ptr, self.index))
+    @property
+    def is_output(self):
+        return not self.is_input
+    @property
+    def name(self):
+        return lib.avfilter_pad_get_name(self.base_ptr, self.index)
+    @property
+    def type(self):
+        return media_type_to_string(lib.avfilter_pad_get_type(self.base_ptr, self.index))
 
 
 cdef class FilterContextPad(FilterPad):
-    
+
     def __repr__(self):
-        
+
         return '<av.FilterContextPad %s.%s[%d] of %s: %s (%s)>' % (
             self.filter.name,
             'inputs' if self.is_input else 'outputs',
@@ -45,32 +42,30 @@ cdef class FilterContextPad(FilterPad):
             self.name,
             self.type,
         )
-    
-    property link:
-        def __get__(self):
-            if self._link:
-                return self._link
-            cdef lib.AVFilterLink **links = self.context.ptr.inputs if self.is_input else self.context.ptr.outputs
-            cdef lib.AVFilterLink *link = links[self.index]
-            if not link:
-                return
-            self._link = wrap_filter_link(self.context.graph, link)
+    @property
+    def link(self):
+        if self._link:
             return self._link
-
-    property linked:
-        def __get__(self):
-            cdef FilterLink link = self.link
-            if link:
-                return link.input if self.is_input else link.output
+        cdef lib.AVFilterLink **links = self.context.ptr.inputs if self.is_input else self.context.ptr.outputs
+        cdef lib.AVFilterLink *link = links[self.index]
+        if not link:
+            return
+        self._link = wrap_filter_link(self.context.graph, link)
+        return self._link
+    @property
+    def linked(self):
+        cdef FilterLink link = self.link
+        if link:
+            return link.input if self.is_input else link.output
 
 
 cdef tuple alloc_filter_pads(Filter filter, lib.AVFilterPad *ptr, bint is_input, FilterContext context=None):
-    
+
     if not ptr:
         return ()
-    
+
     pads = []
-    
+
     # We need to be careful and check our bounds if we know what they are,
     # since the arrays on a AVFilterContext are not NULL terminated.
     cdef int i = 0
@@ -86,5 +81,5 @@ cdef tuple alloc_filter_pads(Filter filter, lib.AVFilterPad *ptr, bint is_input,
         pad.base_ptr = ptr
         pad.index = i
         i += 1
-    
+
     return tuple(pads)

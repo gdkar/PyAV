@@ -24,7 +24,7 @@ cdef class ContainerFormat(object):
         to None which will grab either.
 
     """
-    
+
     def __cinit__(self, name, mode=None):
 
         if name is _cinit_bypass_sentinel:
@@ -51,59 +51,59 @@ cdef class ContainerFormat(object):
     def __repr__(self):
         return '<av.%s %r>' % (self.__class__.__name__, self.name)
 
-    property descriptor:
-        def __get__(self):
-            if self.iptr:
-                return wrap_avclass(self.iptr.priv_class)
-            else:
-                return wrap_avclass(self.optr.priv_class)
+    @property
+    def descriptor(self):
+        if self.iptr:
+            return wrap_avclass(self.iptr.priv_class)
+        else:
+            return wrap_avclass(self.optr.priv_class)
 
-    property options:
-        def __get__(self):
-            return self.descriptor.options
+    @property
+    def options(self):
+        return self.descriptor.options
 
-    property input:
+    @property
+    def input(self):
         """An input-only view of this format."""
-        def __get__(self):
-            if self.iptr == NULL:
-                return None
-            elif self.optr == NULL:
-                return self
-            else:
-                return build_container_format(self.iptr, NULL)
+        if self.iptr == NULL:
+            return None
+        elif self.optr == NULL:
+            return self
+        else:
+            return build_container_format(self.iptr, NULL)
 
-    property output:
+    @property
+    def output(self):
         """An output-only view of this format."""
-        def __get__(self):
-            if self.optr == NULL:
-                return None
-            elif self.iptr == NULL:
-                return self
-            else:
-                return build_container_format(NULL, self.optr)
+        if self.optr == NULL:
+            return None
+        elif self.iptr == NULL:
+            return self
+        else:
+            return build_container_format(NULL, self.optr)
 
-    property is_input:
-        def __get__(self):
-            return self.iptr != NULL
+    @property
+    def is_input(self):
+        return self.iptr != NULL
 
-    property is_output:
-        def __get__(self):
-            return self.optr != NULL
+    @property
+    def is_output(self):
+        return self.optr != NULL
 
-    property long_name:
-        def __get__(self):
-            # We prefer the output names since the inputs may represent
-            # multiple formats.
-            return self.optr.long_name if self.optr else self.iptr.long_name
+    @property
+    def long_name(self):
+        # We prefer the output names since the inputs may represent
+        # multiple formats.
+        return self.optr.long_name if self.optr else self.iptr.long_name
 
-    property extensions:
-        def __get__(self):
-            cdef set exts = set()
-            if self.iptr and self.iptr.extensions:
-                exts.update(self.iptr.extensions.split(','))
-            if self.optr and self.optr.extensions:
-                exts.update(self.optr.extensions.split(','))
-            return exts
+    @property
+    def extensions(self):
+        cdef set exts = set()
+        if self.iptr and self.iptr.extensions:
+            exts.update(self.iptr.extensions.split(','))
+        if self.optr and self.optr.extensions:
+            exts.update(self.optr.extensions.split(','))
+        return exts
 
 
 names = set()

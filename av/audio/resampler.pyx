@@ -26,6 +26,7 @@ cdef class AudioResampler(object):
         self.rate = int(rate) if rate else 0
         self.ptr = lib.swr_alloc()
         if not self.ptr: raise ValueError("could not create SwrContext")
+
     def __dealloc__(self):
         if self.ptr: lib.swr_close(self.ptr)
         lib.swr_free(&self.ptr)
@@ -107,5 +108,3 @@ cdef class AudioResampler(object):
         # only an estimate.
         output._recalc_linesize()
         return output
-
-

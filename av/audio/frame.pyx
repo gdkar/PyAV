@@ -2,7 +2,7 @@ from av.audio.format cimport AudioFormat, get_audio_format
 from av.audio.layout cimport AudioLayout, get_audio_layout
 from av.audio.plane cimport AudioPlane
 from av.utils cimport err_check
-
+import fractions
 
 cdef object _cinit_bypass_sentinel
 
@@ -96,17 +96,24 @@ cdef class AudioFrame(Frame):
             self.format.name,
             id(self),
         )
-    property samples:
+    @property
+    def samples(self):
         """Number of audio samples (per channel) """
-        def __get__(self):
-            if self.ptr != NULL:
-                return self.ptr.nb_samples
+        if self.ptr != NULL:
+            return self.ptr.nb_samples
 
-    property rate:
+    @property
+    def rate(self):
         """Sample rate of the audio data. """
-        def __get__(self):
-            if self.ptr != NULL:
-                return self.ptr.sample_rate
+        if self.ptr != NULL:
+            return self.ptr.sample_rate
+
+    @rate.setter
+    def rate(self, rate):
+        if self.ptr != NULL:
+            self.ptr.sample_rate = rate
+            self.time_base = fractions.Fraction(1,rate)
+
     def to_ndarray(self,**kwargs):
         import numpy as np
         cdef str fname = self.format.packed.name

@@ -38,111 +38,99 @@ cdef class AudioFormat(object):
 
     def __repr__(self):
         return '<av.AudioFormat {}s>'.format(self.name)
-
-    property name:
+    @property
+    def name(self):
         """Canonical name of the sample format.
 
-        >>> SampleFormat('s16p').name
+        >>> AudioFormat('s16p').name
         's16p'
 
         """
-        def __get__(self):
-            return <str>lib.av_get_sample_fmt_name(self.sample_fmt)
-
-    property bytes:
+        return <str>lib.av_get_sample_fmt_name(self.sample_fmt)
+    @property
+    def bytes(self):
         """Number of bytes per sample.
 
-        >>> SampleFormat('s16p').bytes
+        >>> AudioFormat('s16p').bytes
         2
 
         """
-        def __get__(self):
-            return lib.av_get_bytes_per_sample(self.sample_fmt)
-
-    property bits:
+        return lib.av_get_bytes_per_sample(self.sample_fmt)
+    @property
+    def bits(self):
         """Number of bits per sample.
 
-        >>> SampleFormat('s16p').bits
+        >>> AudioFormat('s16p').bits
         16
 
         """
-        def __get__(self):
-            return lib.av_get_bytes_per_sample(self.sample_fmt) << 3
-
-    property is_planar:
+        return lib.av_get_bytes_per_sample(self.sample_fmt) << 3
+    @property
+    def is_planar(self):
         """Is this a planar format?
 
         Strictly opposite of :attr:`is_packed`.
 
         """
-        def __get__(self):
-            return bool(lib.av_sample_fmt_is_planar(self.sample_fmt))
-
-    property is_packed:
+        return bool(lib.av_sample_fmt_is_planar(self.sample_fmt))
+    @property
+    def is_packed(self):
         """Is this a planar format?
 
         Strictly opposite of :attr:`is_planar`.
 
         """
-        def __get__(self):
-            return not lib.av_sample_fmt_is_planar(self.sample_fmt)
-
-    property planar:
+        return not lib.av_sample_fmt_is_planar(self.sample_fmt)
+    @property
+    def planar(self):
         """The planar variant of this format.
 
         Is itself when planar:
 
-        >>> fmt = Format('s16p')
+        >>> fmt = AudioFormat('s16p')
         >>> fmt.planar is fmt
         True
 
         """
-        def __get__(self):
-            if self.is_planar:
-                return self
-            return get_audio_format(lib.av_get_planar_sample_fmt(self.sample_fmt))
-
-    property packed:
+        if self.is_planar:
+            return self
+        return get_audio_format(lib.av_get_planar_sample_fmt(self.sample_fmt))
+    @property
+    def packed(self):
         """The packed variant of this format.
 
         Is itself when packed:
 
-        >>> fmt = Format('s16')
+        >>> fmt = AudioFormat('s16')
         >>> fmt.packed is fmt
         True
 
         """
-        def __get__(self):
-            if self.is_packed:
-                return self
-            return get_audio_format(lib.av_get_packed_sample_fmt(self.sample_fmt))
-
-    property container_name:
+        if self.is_packed:
+            return self
+        return get_audio_format(lib.av_get_packed_sample_fmt(self.sample_fmt))
+    @property
+    def container_name(self):
         """The name of a :class:`ContainerFormat` which directly accepts this data.
 
         :raises ValueError: when planar, since there are no such containers.
 
         """
-        def __get__(self):
 
-            if self.is_planar:
-                raise ValueError('no planar container formats')
+        if self.is_planar:
+            raise ValueError('no planar container formats')
 
-            if self.sample_fmt == lib.AV_SAMPLE_FMT_U8:
-                return 'u8'
+        if self.sample_fmt == lib.AV_SAMPLE_FMT_U8:
+            return 'u8'
 
-            elif self.sample_fmt == lib.AV_SAMPLE_FMT_S16:
-                return 's16' + container_format_postfix
-            elif self.sample_fmt == lib.AV_SAMPLE_FMT_S32:
-                return 's32' + container_format_postfix
-            elif self.sample_fmt == lib.AV_SAMPLE_FMT_FLT:
-                return 'f32' + container_format_postfix
-            elif self.sample_fmt == lib.AV_SAMPLE_FMT_DBL:
-                return 'f64' + container_format_postfix
+        elif self.sample_fmt == lib.AV_SAMPLE_FMT_S16:
+            return 's16' + container_format_postfix
+        elif self.sample_fmt == lib.AV_SAMPLE_FMT_S32:
+            return 's32' + container_format_postfix
+        elif self.sample_fmt == lib.AV_SAMPLE_FMT_FLT:
+            return 'f32' + container_format_postfix
+        elif self.sample_fmt == lib.AV_SAMPLE_FMT_DBL:
+            return 'f64' + container_format_postfix
 
-            raise ValueError('unknown layout')
-
-
-
-
+        raise ValueError('unknown layout')
 

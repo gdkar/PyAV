@@ -30,19 +30,22 @@ cdef class AudioStream(Stream):
             self.format.name,
             id(self),
         )
-
-    property frame_size:
+    @property
+    def frame_size(self):
         """Number of samples per channel in an audio frame."""
-        def __get__(self): return self._codec_context.frame_size
+        return self._codec_context.frame_size
 
-    property rate:
+    @property
+    def rate(self):
         """samples per second """
-        def __get__(self): return self._codec_context.sample_rate
-        def __set__(self, int value): self._codec_context.sample_rate = value
+        return self._codec_context.sample_rate
+    @rate.setter
+    def rate(self, int value):
+        self._codec_context.sample_rate = value
 
-    property channels:
-        def __get__(self):
-            return self._codec_context.channels
+    @property
+    def  channels(self):
+        return self._codec_context.channels
 
     cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
         if not self.next_frame: self.next_frame = alloc_audio_frame()
@@ -147,5 +150,3 @@ cdef class AudioStream(Stream):
         packet.stream = self
 
         return packet
-
-

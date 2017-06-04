@@ -21,5 +21,4 @@ cdef class VideoFormatComponent(object):
     cdef readonly unsigned int index
     cdef lib.AVComponentDescriptor *ptr
 
-
 cdef VideoFormat get_video_format(lib.AVPixelFormat c_format, unsigned int width, unsigned int height)

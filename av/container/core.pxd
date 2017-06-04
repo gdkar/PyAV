@@ -8,7 +8,8 @@ from av.stream cimport Stream
 # Since there are multiple objects that need to refer to a valid context, we
 # need this intermediate proxy object so that there aren't any reference cycles
 # and the pointer can be freed when everything that depends upon it is deleted.
-cdef class ContainerProxy(object):
+cdef class ContainerProxy:
+    cdef object __weakref__
     cdef bint writeable
     cdef lib.AVFormatContext *ptr
 
@@ -34,6 +35,7 @@ cdef class ContainerProxy(object):
     cdef int err_check(self, int value) except -1
 
 cdef class Container(object):
+    cdef object __weakref__
 
     cdef readonly str name
     cdef readonly object file
@@ -44,7 +46,6 @@ cdef class Container(object):
     cdef _Dictionary options
 
     cdef ContainerProxy proxy
-    cdef object __weakref__
 
     cdef readonly StreamContainer streams
     cdef readonly dict metadata

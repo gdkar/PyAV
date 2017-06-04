@@ -13,23 +13,23 @@ cdef Option find_option( void *obj, const char *name, int opt_flags, int search_
     return wrap_option(lib.av_opt_find(obj, name, NULL, opt_flags, search_flags))
 
 cdef dict _TYPE_NAMES = {
-    lib.AV_OPT_TYPE_FLAGS: 'FLAGS',   
-    lib.AV_OPT_TYPE_INT: 'INT',     
-    lib.AV_OPT_TYPE_INT64: 'INT64',   
-    lib.AV_OPT_TYPE_DOUBLE: 'DOUBLE',  
-    lib.AV_OPT_TYPE_FLOAT: 'FLOAT',   
-    lib.AV_OPT_TYPE_STRING: 'STRING',  
-    lib.AV_OPT_TYPE_RATIONAL: 'RATIONAL',    
-    lib.AV_OPT_TYPE_BINARY: 'BINARY',  
+    lib.AV_OPT_TYPE_FLAGS: 'FLAGS',
+    lib.AV_OPT_TYPE_INT: 'INT',
+    lib.AV_OPT_TYPE_INT64: 'INT64',
+    lib.AV_OPT_TYPE_DOUBLE: 'DOUBLE',
+    lib.AV_OPT_TYPE_FLOAT: 'FLOAT',
+    lib.AV_OPT_TYPE_STRING: 'STRING',
+    lib.AV_OPT_TYPE_RATIONAL: 'RATIONAL',
+    lib.AV_OPT_TYPE_BINARY: 'BINARY',
     #lib.AV_OPT_TYPE_DICT: 'DICT', # Recent addition; does not always exist.
-    lib.AV_OPT_TYPE_CONST: 'CONST',   
-    #lib.AV_OPT_TYPE_IMAGE_SIZE: 'IMAGE_SIZE',  
-    #lib.AV_OPT_TYPE_PIXEL_FMT: 'PIXEL_FMT',   
-    #lib.AV_OPT_TYPE_SAMPLE_FMT: 'SAMPLE_FMT',  
-    #lib.AV_OPT_TYPE_VIDEO_RATE: 'VIDEO_RATE',  
-    #lib.AV_OPT_TYPE_DURATION: 'DURATION',    
-    #lib.AV_OPT_TYPE_COLOR: 'COLOR',   
-    #lib.AV_OPT_TYPE_CHANNEL_LAYOUT: 'CHANNEL_LAYOUT',  
+    lib.AV_OPT_TYPE_CONST: 'CONST',
+    #lib.AV_OPT_TYPE_IMAGE_SIZE: 'IMAGE_SIZE',
+    #lib.AV_OPT_TYPE_PIXEL_FMT: 'PIXEL_FMT',
+    #lib.AV_OPT_TYPE_SAMPLE_FMT: 'SAMPLE_FMT',
+    #lib.AV_OPT_TYPE_VIDEO_RATE: 'VIDEO_RATE',
+    #lib.AV_OPT_TYPE_DURATION: 'DURATION',
+    #lib.AV_OPT_TYPE_COLOR: 'COLOR',
+    #lib.AV_OPT_TYPE_CHANNEL_LAYOUT: 'CHANNEL_LAYOUT',
 }
 
 cdef object get_option( void *obj, const char *name, int search_flags ):
@@ -43,7 +43,7 @@ cdef object get_option( void *obj, const char *name, int search_flags ):
         return INT64
     elif opt.type is lib.AV_OPT_TYPE_FLOAT or opt.type is lib.AV_OPT_TYPE_DOUBLE:
         lib.av_opt_get_double(obj, name, search_flags, &DOUBLE)
-        return DOUBLE 
+        return DOUBLE
     elif opt.type is lib.AV_OPT_TYPE_RATIONAL:
         lib.av_opt_get_q(obj, name, search_flags, &RATIONAL)
         return avrational_to_fraction(&RATIONAL)
@@ -87,19 +87,16 @@ cdef class Option(object):
     def __cinit__(self, sentinel):
         if sentinel != _cinit_sentinel:
             raise RuntimeError('Cannot construct av.Option')
+    @property
+    def name(self):
+        return self.ptr.name
+    @property
+    def type(self):
+        return _TYPE_NAMES[self.ptr.type]
+    @property
+    def help(self):
+        return self.ptr.help if self.ptr.help != NULL else ''
 
-    property name:
-        def __get__(self):
-            return self.ptr.name
-
-    property type:
-        def __get__(self):
-            return _TYPE_NAMES[self.ptr.type]
-
-    property help:
-        def __get__(self):
-            return self.ptr.help if self.ptr.help != NULL else ''
-            
     def __repr__(self):
         return '<av.%s %s at 0x%x>' % (self.__class__.__name__, self.name, id(self))
 

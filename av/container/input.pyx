@@ -15,7 +15,7 @@ cdef class InputContainer(Container):
 
         cdef int i
 
-        # Create several clones of out one set of options, since 
+        # Create several clones of out one set of options, since
         # avformat_find_stream_info expects an array of them.
         # TODO: Expose per-stream options at some point.
         cdef lib.AVDictionary **c_options = NULL
@@ -50,18 +50,18 @@ cdef class InputContainer(Container):
             self.streams.add_stream(build_stream(self, self.proxy.ptr.streams[i]))
 
         self.metadata = avdict_to_dict(self.proxy.ptr.metadata)
-
-    property start_time:
-        def __get__(self): return self.proxy.ptr.start_time
-
-    property duration:
-        def __get__(self): return self.proxy.ptr.duration
-
-    property bit_rate:
-        def __get__(self): return self.proxy.ptr.bit_rate
-
-    property size:
-        def __get__(self): return lib.avio_size(self.proxy.ptr.pb)
+    @property
+    def start_time(self):
+        return self.proxy.ptr.start_time
+    @property
+    def duration(self):
+        return self.proxy.ptr.duration
+    @property
+    def bit_rate(self):
+        return self.proxy.ptr.bit_rate
+    @property
+    def size(self):
+        return lib.avio_size(self.proxy.ptr.pb)
 
     def demux(self, *args, **kwargs):
         """demux(streams=None, video=None, audio=None, subtitles=None)

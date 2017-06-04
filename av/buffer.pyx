@@ -41,13 +41,13 @@ cdef class _Buffer(object):
 
 cdef class Buffer(_Buffer):
 
-    property buffer_size:
-        def __get__(self):
-            return self._buffer_size()
+    @property
+    def buffer_size(self):
+        return self._buffer_size()
 
-    property buffer_ptr:
-        def __get__(self):
-            return <size_t>self._buffer_ptr()
+    @property
+    def buffer_ptr(self):
+        return <size_t>self._buffer_ptr()
 
     def to_bytes(self):
         return <bytes>(<char*>self._buffer_ptr())[:self._buffer_size()]

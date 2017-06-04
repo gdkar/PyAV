@@ -33,7 +33,7 @@ cdef class OutputContainer(Container):
         :returns: The new :class:`~av.stream.Stream`.
 
         """
-        
+
         if (codec_name is None and template is None) or (codec_name is not None and template is not None):
             raise ValueError('needs one of codec_name or template')
 
@@ -54,7 +54,7 @@ cdef class OutputContainer(Container):
             if not template._codec_context:
                 raise ValueError("template has no codec context")
             codec = template._codec
-        
+
         # Assert that this format supports the requested codec.
         if not lib.avformat_query_codec(
             self.proxy.ptr.oformat,
@@ -112,15 +112,15 @@ cdef class OutputContainer(Container):
         # Some formats want stream headers to be separate
         if self.proxy.ptr.oformat.flags & lib.AVFMT_GLOBALHEADER:
             codec_context.flags |= lib.CODEC_FLAG_GLOBAL_HEADER
-        
+
         # Finally construct the user-land stream.
         cdef Stream py_stream = build_stream(self, stream)
         self.streams.add_stream(py_stream)
         return py_stream
-    
+
     cpdef start_encoding(self):
         """Write the file header! Called automatically."""
-        
+
         if self._started:
             return
 
@@ -140,7 +140,7 @@ cdef class OutputContainer(Container):
                     # Possible TODO: expose per-stream options.
                     &options.ptr
                 ))
-                
+
                 # Track option usage.
                 for k in self.options:
                     if k not in options:
@@ -160,7 +160,7 @@ cdef class OutputContainer(Container):
 
         options = self.options.copy()
         self.proxy.err_check(lib.avformat_write_header(
-            self.proxy.ptr, 
+            self.proxy.ptr,
             &options.ptr
         ))
 
@@ -169,12 +169,12 @@ cdef class OutputContainer(Container):
             if k not in options:
                 used_options.add(k)
         # ... and warn if any weren't used.
-        unused_options = {k: v for k, v in self.options.iteritems() if k not in used_options}
+        unused_options = {k: v for k, v in self.options.items() if k not in used_options}
         if unused_options:
             log.warning('Some options were not used: %s' % unused_options)
 
         self._started = True
-            
+
     def close(self, strict=False):
 
         # Normally, we just ignore that we've already done this.
@@ -191,15 +191,15 @@ cdef class OutputContainer(Container):
         cdef Stream stream
         for stream in self.streams:
             lib.avcodec_close(stream._codec_context)
-            
+
         if self.file is None and not self.proxy.ptr.oformat.flags & lib.AVFMT_NOFILE:
             lib.avio_closep(&self.proxy.ptr.pb)
 
         self._done = True
-        
+
     def mux(self, Packet packet not None):
         self.start_encoding()
         self.proxy.err_check(lib.av_interleaved_write_frame(self.proxy.ptr, &packet.struct))
 
 
-    
+

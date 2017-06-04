@@ -7,7 +7,6 @@ from av.video.reformatter cimport VideoReformatter
 
 
 cdef class VideoStream(Stream):
-    
     cdef readonly VideoFormat format
     cdef _build_format(self)
     cdef readonly int buffer_size

@@ -52,11 +52,13 @@ cdef class AudioFifo:
         if frame.ptr.pts != lib.AV_NOPTS_VALUE:
             self.last_pts   = frame.ptr.pts
             self.pts_offset = int(frame.ptr.nb_samples  / ( self.time_base * self.rate))
+
         err_check(lib.av_audio_fifo_write(
             self.ptr,
             <void **>frame.ptr.extended_data,
             frame.ptr.nb_samples,
         ))
+
     cpdef drain(self, unsigned int nb_samples):
         nb_samples = nb_samples or self.samples
         nb_samples = min(nb_samples,self.samples)
@@ -93,6 +95,7 @@ cdef class AudioFifo:
             frame.ptr.pts = self.last_pts - self.pts_offset
 
         return frame
+
     cpdef peek_at(self, unsigned int nb_samples=0,unsigned int offset=0, bint partial=False):
         if not self.samples:
             return
@@ -175,21 +178,21 @@ cdef class AudioFifo:
         return frame
     def __len__(self):
         return self.samples
-    property next_pts:
-        def __get__(self):
-            if self.last_pts != lib.AV_NOPTS_VALUE:
-                return self.last_pts - self.pts_offset
-    property samples:
+    @property
+    def next_pts(self):
+        if self.last_pts != lib.AV_NOPTS_VALUE:
+            return self.last_pts - self.pts_offset
+    @property
+    def samples(self):
         """Number of audio samples (per channel) """
-        def __get__(self):
-            if self.ptr != NULL:
-                return lib.av_audio_fifo_size(self.ptr)
-            else:
-                return 0
-    property rate:
+        if self.ptr != NULL:
+            return lib.av_audio_fifo_size(self.ptr)
+        else:
+            return 0
+    @property
+    def rate(self):
         """Sample rate of the audio data. """
-        def __get__(self):
-            return self._rate
-    property time_base:
-        def __get__(self):
-            return avrational_to_fraction(&self._time_base)
+        return self._rate
+    @property
+    def time_base(self):
+        return avrational_to_fraction(&self._time_base)

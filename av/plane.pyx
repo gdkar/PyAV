@@ -10,13 +10,13 @@ cdef class Plane(object):
         return '<av.%s at 0x%x>' % (self.__class__.__name__, id(self))
     def __len__(self):
         return self.buffer_size
-    property line_size:
+    @property
+    def line_size(self):
         """Bytes per horizontal line in this plane."""
-        def __get__(self):
-            return self.frame.ptr.linesize[self.index]
-    property ptr:
-        def __get__(self):
-            return <long>self.frame.ptr.extended_data[self.index]
+        return self.frame.ptr.linesize[self.index]
+    @property
+    def ptr(self):
+        return <long>self.frame.ptr.extended_data[self.index]
     def to_bytes(self):
         return <bytes>(<char*>self.frame.ptr.extended_data[self.index])[:self.buffer_size]
     def update(self, input):

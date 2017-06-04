@@ -10,7 +10,7 @@ from av.video.frame cimport alloc_video_frame
 
 
 cdef class VideoStream(Stream):
-    
+
     cdef _init(self, Container container, lib.AVStream *stream):
         Stream._init(self, container, stream)
         self.last_w = 0
@@ -65,12 +65,12 @@ cdef class VideoStream(Stream):
         return frame
     cpdef encode(self, VideoFrame frame=None):
         """Encodes a frame of video, returns a packet if one is ready.
-        The output packet does not necessarily contain data for the most recent frame, 
+        The output packet does not necessarily contain data for the most recent frame,
         as encoders can delay, split, and combine input frames internally as needed.
         If called with with no args it will flush out the encoder and return the buffered
         packets until there are none left, at which it will return None.
         """
-        
+
         # setup formatContext for encoding
         self._weak_container().start_encoding()
         if not self.reformatter:self.reformatter = VideoReformatter()
@@ -117,77 +117,86 @@ cdef class VideoStream(Stream):
         if got_output:
             # rescale the packet pts and dts, which are in codec time_base, to the streams time_base
             if packet.struct.pts != lib.AV_NOPTS_VALUE:
-                packet.struct.pts = lib.av_rescale_q(packet.struct.pts, 
+                packet.struct.pts = lib.av_rescale_q(packet.struct.pts,
                                                          self._codec_context.time_base,
                                                          self._stream.time_base)
             if packet.struct.dts != lib.AV_NOPTS_VALUE:
-                packet.struct.dts = lib.av_rescale_q(packet.struct.dts, 
+                packet.struct.dts = lib.av_rescale_q(packet.struct.dts,
                                                      self._codec_context.time_base,
                                                      self._stream.time_base)
-                
+
             if packet.struct.duration != lib.AV_NOPTS_VALUE:
-                packet.struct.duration = lib.av_rescale_q(packet.struct.duration, 
+                packet.struct.duration = lib.av_rescale_q(packet.struct.duration,
                                                      self._codec_context.time_base,
                                                      self._stream.time_base)
-                
+
             packet.struct.stream_index = self._stream.index
             packet.stream = self
 
             return packet
 
-    property average_rate:
-        def __get__(self): return avrational_to_fraction(&self._stream.avg_frame_rate)
+    @property
+    def average_rate(self):
+        return avrational_to_fraction(&self._stream.avg_frame_rate)
 
-    property gop_size:
-        def __get__(self):
-            return self._codec_context.gop_size if self._codec_context else None
-        def __set__(self, int value):
-            self._codec_context.gop_size = value
+    @property
+    def gop_size(self):
+        return self._codec_context.gop_size if self._codec_context else None
 
-    property sample_aspect_ratio:
-        def __get__(self):
-            return avrational_to_fraction(&self._codec_context.sample_aspect_ratio) if self._codec_context else None
-        def __set__(self, value):
-            to_avrational(value, &self._codec_context.sample_aspect_ratio)
-            
-    property display_aspect_ratio:
-        def __get__(self):
-            cdef lib.AVRational dar
-            
-            lib.av_reduce(
-                &dar.num, &dar.den,
-                self._codec_context.width * self._codec_context.sample_aspect_ratio.num,
-                self._codec_context.height * self._codec_context.sample_aspect_ratio.den, 1024*1024)
+    @gop_size.setter
+    def gop_size(self, int value):
+        self._codec_context.gop_size = value
 
-            return avrational_to_fraction(&dar)
+    @property
+    def sample_aspect_ratio(self):
+        return avrational_to_fraction(&self._codec_context.sample_aspect_ratio) if self._codec_context else None
 
-    property has_b_frames:
-        def __get__(self):
-            if self._codec_context.has_b_frames:
-                return True
-            return False
+    @sample_aspect_ratio.setter
+    def sample_aspect_ratio(self, value):
+        to_avrational(value, &self._codec_context.sample_aspect_ratio)
 
-    property coded_width:
-        def __get__(self):
-            return self._codec_context.coded_width if self._codec_context else None
+    @property
+    def  display_aspect_ratio(self):
+        cdef lib.AVRational dar
 
-    property coded_height:
-        def __get__(self):
-            return self._codec_context.coded_height if self._codec_context else None
+        lib.av_reduce(
+            &dar.num, &dar.den,
+            self._codec_context.width * self._codec_context.sample_aspect_ratio.num,
+            self._codec_context.height * self._codec_context.sample_aspect_ratio.den, 1024*1024)
 
-    property width:
-        def __get__(self):
-            return self._codec_context.width if self._codec_context else None
-        def __set__(self, unsigned int value):
-            self._codec_context.width = value
-            self._build_format()
+        return avrational_to_fraction(&dar)
 
-    property height:
-        def __get__(self):
-            return self._codec_context.height if self._codec_context else None
-        def __set__(self, unsigned int value):
-            self._codec_context.height = value
-            self._build_format()
+    @property
+    def has_b_frames(self):
+        if self._codec_context.has_b_frames:
+            return True
+        return False
+
+    @property
+    def coded_width(self):
+        return self._codec_context.coded_width if self._codec_context else None
+
+    @property
+    def coded_height(self):
+        return self._codec_context.coded_height if self._codec_context else None
+
+    @property
+    def width(self):
+        return self._codec_context.width if self._codec_context else None
+
+    @width.setter
+    def width(self, unsigned int value):
+        self._codec_context.width = value
+        self._build_format()
+
+    @property
+    def height(self):
+        return self._codec_context.height if self._codec_context else None
+
+    @height.setter
+    def height(self, unsigned int value):
+        self._codec_context.height = value
+        self._build_format()
     # TEMPORARY WRITE-ONLY PROPERTIES to get encoding working again.
     property pix_fmt:
         def __set__(self, value):

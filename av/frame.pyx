@@ -23,29 +23,36 @@ cdef class Frame(object):
             self.index,
             id(self),
         )
-    property dts:
-        def __get__(self):
-            if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:return None
-            return self.ptr.pkt_dts
-    property pts:
-        def __get__(self):
-            if self.ptr.pts == lib.AV_NOPTS_VALUE:return None
-            return self.ptr.pts
-        def __set__(self, value):
-            if value is None:self.ptr.pts = lib.AV_NOPTS_VALUE
-            else: self.ptr.pts = value
-    property time:
-        def __get__(self):
-            if self.ptr.pts == lib.AV_NOPTS_VALUE:
-                return None
-            else:
-                return float(self.ptr.pts) * self._time_base.num / self._time_base.den
+    @property
+    def dts(self):
+        if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:return None
+        return self.ptr.pkt_dts
 
-    property time_base:
-        def __get__(self):
-            return avrational_to_fraction(&self._time_base)
-        def __set__(self, value):
-            to_avrational(value,&self._time_base)
+    @property
+    def pts(self):
+        if self.ptr.pts == lib.AV_NOPTS_VALUE:return None
+        return self.ptr.pts
+
+    @pts.setter
+    def pts(self, value):
+        if value is None:self.ptr.pts = lib.AV_NOPTS_VALUE
+        else: self.ptr.pts = value
+
+    @property
+    def time(self):
+        if self.ptr.pts == lib.AV_NOPTS_VALUE:
+            return None
+        else:
+            return float(self.ptr.pts) * self._time_base.num / self._time_base.den
+
+    @property
+    def time_base(self):
+        return avrational_to_fraction(&self._time_base)
+
+    @time_base.setter
+    def time_base(self, value):
+        to_avrational(value,&self._time_base)
+
     cdef _init_planes(self, cls=Plane):
         # We need to detect which planes actually exist, but also contrain
         # ourselves to the maximum plane count (as determined only by VideoFrames
@@ -63,6 +70,7 @@ cdef class Frame(object):
             plane = cls(self, i)
             Py_INCREF(plane)
             PyTuple_SET_ITEM(self.planes, i, plane)
+
     cdef int _max_plane_count(self): return INT_MAX
     cdef _copy_attributes_from(self, Frame other):
         self.index = other.index

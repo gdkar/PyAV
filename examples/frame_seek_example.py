@@ -103,7 +103,7 @@ class FrameGrabber(Q.QObject):
         if target_frame in self.frame_cache:
             return self.frame_cache[target_frame]
         if ((not list(self.frame_cache.keys()) or target_frame>min(self.frame_cache.keys())) and
-            (not self.frame_gen or target_frame < self.last_seen + self.skip_limit):
+            (not self.frame_gen or target_frame < self.last_seen + self.skip_limit)):
             if not self.frame_gen:
                 self.frame_gen = self.next_frame()
             for i, (frame_index, frame) in enumerate(self.frame_gen):
