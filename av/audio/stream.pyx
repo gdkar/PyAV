@@ -1,6 +1,4 @@
-
 cdef class AudioStream(Stream):
-
     def __repr__(self):
         return '<av.%s #%d %s at %dHz, %s, %s at 0x%x>' % (
             self.__class__.__name__,

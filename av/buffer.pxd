@@ -1,4 +1,4 @@
-
+cimport libav as lib
 cdef class _Buffer(object):
 
     cdef size_t _buffer_size(self)

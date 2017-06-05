@@ -1,6 +1,5 @@
 from cpython.buffer cimport PyObject_CheckBuffer, PyObject_GetBuffer, PyBUF_SIMPLE, PyBuffer_Release
 
-
 cdef class ByteSource(object):
 
     def __cinit__(self, owner):
@@ -22,7 +21,7 @@ cdef class ByteSource(object):
                 self.ptr = <unsigned char *>self.view.buf
                 self.length = self.view.len
                 return
-        
+
         raise TypeError('expected bytes, bytearray or memoryview')
 
     def __dealloc__(self):

@@ -10,7 +10,6 @@ class TestAudioFifo(TestCase):
         stream = container.streams.audio[0]
 
         fifo = av.AudioFifo()
-
         input_ = []
         output = []
 
@@ -63,7 +62,7 @@ class TestAudioFifo(TestCase):
     def test_pts_complex(self):
 
         fifo = av.AudioFifo()
-        
+
         iframe = av.AudioFrame(samples=1024)
         iframe.pts = 0
         iframe.sample_rate = 48000
@@ -79,7 +78,7 @@ class TestAudioFifo(TestCase):
         self.assertEqual(fifo.pts_per_sample, 2.0)
 
     def test_missing_sample_rate(self):
-        
+
         fifo = av.AudioFifo()
 
         iframe = av.AudioFrame(samples=1024)
@@ -96,7 +95,7 @@ class TestAudioFifo(TestCase):
         self.assertEqual(oframe.time_base, iframe.time_base)
 
     def test_missing_time_base(self):
-        
+
         fifo = av.AudioFifo()
 
         iframe = av.AudioFrame(samples=1024)
@@ -113,4 +112,4 @@ class TestAudioFifo(TestCase):
         self.assertEqual(oframe.sample_rate, iframe.sample_rate)
 
 
-        
+

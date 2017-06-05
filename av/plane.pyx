@@ -1,22 +1,21 @@
 
 cdef class Plane(Buffer):
-    
+
     def __cinit__(self, Frame frame, int index):
         self.frame = frame
         self.index = index
 
     def __repr__(self):
         return '<av.%s at 0x%x>' % (self.__class__.__name__, id(self))
-    
-    property line_size:
-        """Bytes per horizontal line in this plane."""
-        def __get__(self):
-            return self.frame.ptr.linesize[self.index]
 
-    property ptr:
-        def __get__(self):
-            return <long>self.frame.ptr.extended_data[self.index]
-    
+    @property
+    def line_size(self):
+        """Bytes per horizontal line in this plane."""
+        return self.frame.ptr.linesize[self.index]
+    @property
+    def ptr(self):
+        return <long>self.frame.ptr.extended_data[self.index]
+
     cdef size_t _buffer_size(self):
         return self.frame.ptr.linesize[self.index]
 

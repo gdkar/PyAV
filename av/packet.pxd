@@ -4,13 +4,9 @@ from av.buffer cimport Buffer
 from av.stream cimport Stream
 from av.bytesource cimport ByteSource
 
-
 cdef class Packet(Buffer):
-
-    cdef lib.AVPacket struct
-    
+    cdef lib.AVPacket *ptr
     cdef Stream _stream
-
     # We track our own time.
     cdef lib.AVRational _time_base
     cdef _rebase_time(self, lib.AVRational)

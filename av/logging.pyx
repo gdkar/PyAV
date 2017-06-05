@@ -125,7 +125,7 @@ cdef int _queue_size
 cdef bint _print_queue_size = False
 
 # For repeat check.
-cdef _Record _last_record 
+cdef _Record _last_record
 cdef int _skip_count = 0
 
 

@@ -14,19 +14,13 @@ from av.utils cimport err_check, dict_to_avdict
 from av.dictionary import Dictionary # not cimport
 from av.utils import AVError # not cimport
 
-
-
-
 cdef object _cinit_sentinel = object()
-
-
 
 cdef class ContainerProxy(object):
 
     def __init__(self, sentinel, Container container):
 
         cdef int res
-
         if sentinel is not _cinit_sentinel:
             raise RuntimeError('cannot construct ContainerProxy')
 
@@ -36,8 +30,6 @@ cdef class ContainerProxy(object):
         self.writeable = container.writeable
 
         cdef char *name = self.name
-
-
         cdef lib.AVOutputFormat *ofmt
         if self.writeable:
 
@@ -92,7 +84,6 @@ cdef class ContainerProxy(object):
             self.iocontext.max_packet_size = self.bufsize
             self.ptr.pb = self.iocontext
             #self.ptr.flags |= lib.AVFMT_FLAG_CUSTOM_IO
-
         cdef lib.AVInputFormat *ifmt
         cdef _Dictionary options
         if not self.writeable:
@@ -132,19 +123,15 @@ cdef class ContainerProxy(object):
             flags |= lib.AVSEEK_FLAG_BYTE
         elif mode != 'time':
             raise ValueError('mode must be one of "frame", "byte", or "time"')
-
         if backward:
             flags |= lib.AVSEEK_FLAG_BACKWARD
-
         if any_frame:
             flags |= lib.AVSEEK_FLAG_ANY
 
         with nogil:
             ret = lib.av_seek_frame(self.ptr, stream_index, timestamp, flags)
         err_check(ret)
-
         self.flush_buffers()
-
     cdef flush_buffers(self):
         cdef int i
         cdef lib.AVStream *stream
@@ -162,7 +149,6 @@ cdef class ContainerProxy(object):
 
 
 cdef class Container(object):
-
     def __cinit__(self, sentinel, file_, format_name, options):
 
         if sentinel is not _cinit_sentinel:
@@ -191,8 +177,6 @@ cdef class Container(object):
     def __repr__(self):
         return '<av.%s %r>' % (self.__class__.__name__, self.file or self.name)
 
-
-
 def open(file, mode=None, format=None, options=None):
     """open(file, mode='r', format=None, options=None)
 
@@ -210,12 +194,10 @@ def open(file, mode=None, format=None, options=None):
         >>> av.open(format='avfoundation', file='0') # doctest: +SKIP
 
     """
-
     if mode is None:
         mode = getattr(file, 'mode', None)
     if mode is None:
         mode = 'r'
-
     if mode.startswith('r'):
         return InputContainer(_cinit_sentinel, file, format, options)
     if mode.startswith('w'):

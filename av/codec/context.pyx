@@ -1,26 +1,23 @@
+cimport libav as lib
 from cpython cimport PyWeakref_NewRef
 from libc.errno cimport EAGAIN
 from libc.stdint cimport uint8_t, int64_t
 from libc.stdlib cimport malloc, realloc, free
 from libc.string cimport memcpy
 
-cimport libav as lib
 
 from av.codec.codec cimport Codec, wrap_codec
 from av.dictionary cimport _Dictionary
 from av.dictionary import Dictionary
 from av.packet cimport Packet
-from av.utils cimport err_check, avdict_to_dict, avrational_to_faction, to_avrational, media_type_to_string
-
+from av.utils cimport err_check, avdict_to_dict, avrational_to_fraction, to_avrational, media_type_to_string
 
 cdef object _cinit_sentinel = object()
 
-
 cdef CodecContext wrap_codec_context(lib.AVCodecContext *c_ctx, lib.AVCodec *c_codec, ContainerProxy container):
     """Build an av.CodecContext for an existing AVCodecContext."""
-    
-    cdef CodecContext py_ctx
 
+    cdef CodecContext py_ctx
     # TODO: This.
     if c_ctx.codec_type == lib.AVMEDIA_TYPE_VIDEO:
         from av.video.codeccontext import VideoCodecContext
@@ -39,9 +36,7 @@ cdef CodecContext wrap_codec_context(lib.AVCodecContext *c_ctx, lib.AVCodec *c_c
 
     return py_ctx
 
-
 cdef class CodecContext(object):
-    
     @staticmethod
     def create(codec, mode=None):
         cdef Codec cy_codec = codec if isinstance(codec, Codec) else Codec(codec, mode)
@@ -65,16 +60,16 @@ cdef class CodecContext(object):
 
         self.stream_index = -1
 
-    property is_open:
-        def __get__(self):
-            return lib.avcodec_is_open(self.ptr)
+    @property
+    def is_open(self):
+        return lib.avcodec_is_open(self.ptr)
 
-    property is_encoder:
-        def __get__(self):
-            return lib.av_codec_is_encoder(self.ptr.codec)
-    property is_decoder:
-        def __get__(self):
-            return lib.av_codec_is_decoder(self.ptr.codec)
+    @property
+    def is_encoder(self):
+        return lib.av_codec_is_encoder(self.ptr.codec)
+    @property
+    def is_decoder(self):
+        return lib.av_codec_is_decoder(self.ptr.codec)
 
     cpdef open(self, bint strict=True):
 
@@ -168,20 +163,20 @@ cdef class CodecContext(object):
                 used = lib.av_parser_parse2(
                     self.parser,
                     self.ptr,
-                    &packet.struct.data, &packet.struct.size,
+                    &packet.ptr.data, &packet.ptr.size,
                     self.parse_buffer + base, self.parse_buffer_size - base,
                     0, 0,
                     self.parse_pos
                 )
             err_check(used)
 
-            if packet.struct.size:
+            if packet.ptr.size:
                 packets.append(packet)
             if used:
                 self.parse_pos += used
                 base += used
 
-            if not (used or packet.struct.size):
+            if not (used or packet.ptr.size):
                 break
 
         if base:
@@ -210,7 +205,7 @@ cdef class CodecContext(object):
 
         cdef Frame frame
 
-        cdef lib.AVPacket *packet_ptr = &packet.struct if packet else NULL
+        cdef lib.AVPacket *packet_ptr = packet.ptr if packet else NULL
         err_check(lib.avcodec_send_packet(self.ptr, packet_ptr))
 
         res = []
@@ -247,8 +242,7 @@ cdef class CodecContext(object):
     cdef _recv_packet(self):
 
         cdef Packet packet = Packet()
-            
-        cdef int res = lib.avcodec_receive_packet(self.ptr, &packet.struct)
+        cdef int res = lib.avcodec_receive_packet(self.ptr, packet.ptr)
         if res == -EAGAIN or res == lib.AVERROR_EOF:
             return
         err_check(res)
@@ -275,7 +269,7 @@ cdef class CodecContext(object):
 
         if (
             prefer_send_recv and
-            lib.PYAV_HAVE_AVCODEC_SEND_PACKET and
+            #lib.PYAV_HAVE_AVCODEC_SEND_PACKET
             (
                 self.ptr.codec_type == lib.AVMEDIA_TYPE_VIDEO or
                 self.ptr.codec_type == lib.AVMEDIA_TYPE_AUDIO
@@ -325,10 +319,9 @@ cdef class CodecContext(object):
             raise ValueError('cannot decode unknown codec')
 
         self.open(strict=False)
-
         if (
             prefer_send_recv and
-            lib.PYAV_HAVE_AVCODEC_SEND_PACKET and
+            #lib.PYAV_HAVE_AVCODEC_SEND_PACKET and
             (
                 self.ptr.codec_type == lib.AVMEDIA_TYPE_VIDEO or
                 self.ptr.codec_type == lib.AVMEDIA_TYPE_AUDIO
@@ -346,34 +339,30 @@ cdef class CodecContext(object):
         cdef int data_consumed = 0
         cdef list decoded_objs = []
 
-        cdef uint8_t *original_data = packet.struct.data
-        cdef int      original_size = packet.struct.size
+        cdef uint8_t *original_data = packet.ptr.data
+        cdef int      original_size = packet.ptr.size
 
-        cdef bint is_flushing = not (packet.struct.data and packet.struct.size)
+        cdef bint is_flushing = not (packet.ptr.data and packet.ptr.size)
 
         # Keep decoding while there is data in this packet.
-        while is_flushing or packet.struct.size > 0:
-
+        while is_flushing or packet.ptr.size > 0:
             if is_flushing:
-                packet.struct.data = NULL
-                packet.struct.size = 0
+                packet.ptr.data = NULL
+                packet.ptr.size = 0
 
-            decoded = self._decode(&packet.struct, &data_consumed)
-            packet.struct.data += data_consumed
-            packet.struct.size -= data_consumed
-            
+            decoded = self._decode(packet.ptr, &data_consumed)
+            packet.ptr.data += data_consumed
+            packet.ptr.size -= data_consumed
+
             if decoded:
-
                 if isinstance(decoded, Frame):
                     self._setup_decoded_frame(decoded)
                 decoded_objs.append(decoded)
-
                 # Sometimes we will error if we try to flush the stream
                 # (e.g. MJPEG webcam streams), and so we must be able to
                 # bail after the first, even though buffers may build up.
                 if count and len(decoded_objs) >= count:
                     break
-
             # Sometimes there are no frames, and no data is consumed, and this
             # is ok. However, no more frames are going to be pulled out of here.
             # (It is possible for data to not be consumed as long as there are
@@ -382,8 +371,8 @@ cdef class CodecContext(object):
                 break
 
         # Restore the packet.
-        packet.struct.data = original_data
-        packet.struct.size = original_size
+        packet.ptr.data = original_data
+        packet.ptr.size = original_size
 
         return decoded_objs
 
@@ -406,61 +395,61 @@ cdef class CodecContext(object):
             # This is a bad assumption to make, as it seems like AVCodecContext
             # barely cares about timing information.
             frame._time_base = self.ptr.time_base
-        
+
         frame.index = self.ptr.frame_number - 1
- 
+
     cdef _decode(self, lib.AVPacket *packet, int *data_consumed):
         raise NotImplementedError('Base CodecContext cannot decode packets.')
 
-    property name:
-        def __get__(self):
-            return self.codec.name
+    @property
+    def name(self):
+        return self.codec.name
 
-    property type:
-        def __get__(self):
-            return self.codec.type
-        
-    property profile:
-        def __get__(self):
-            if self.ptr.codec and lib.av_get_profile_name(self.ptr.codec, self.ptr.profile):
+    @property
+    def type(self):
+        return self.codec.type
+
+    @property
+    def profile(self):
+        if self.ptr.codec and lib.av_get_profile_name(self.ptr.codec, self.ptr.profile):
                 return lib.av_get_profile_name(self.ptr.codec, self.ptr.profile)
 
-    property time_base:
-        def __get__(self):
-            return avrational_to_faction(&self.ptr.time_base)
-        def __set__(self, value):
-            to_avrational(value, &self.ptr.time_base)
+    @property
+    def time_base(self):
+        return avrational_to_fraction(&self.ptr.time_base)
+    @time_base.setter
+    def time_base(self, value):
+        to_avrational(value, &self.ptr.time_base)
 
-    property ticks_per_frame:
-        def __get__(self):
-            return self.ptr.ticks_per_frame
+    @property
+    def ticks_per_frame(self):
+        return self.ptr.ticks_per_frame
 
-    property bit_rate:
-        def __get__(self):
-            return self.ptr.bit_rate if self.ptr.bit_rate > 0 else None
-        def __set__(self, int value):
-            self.ptr.bit_rate = value
+    @property
+    def bit_rate(self):
+        return self.ptr.bit_rate if self.ptr.bit_rate > 0 else None
+    @bit_rate.setter
+    def bit_rate(self, int value):
+        self.ptr.bit_rate = value
 
-    property max_bit_rate:
-        def __get__(self):
-            if self.ptr.rc_max_rate > 0:
-                return self.ptr.rc_max_rate
-            else:
-                return None
-            
-    property bit_rate_tolerance:
-        def __get__(self):
-            self.ptr.bit_rate_tolerance
-        def __set__(self, int value):
-            self.ptr.bit_rate_tolerance = value
+    @property
+    def max_bit_rate(self):
+        if self.ptr.rc_max_rate > 0:
+            return self.ptr.rc_max_rate
+
+    @property
+    def bit_rate_tolerance(self):
+        self.ptr.bit_rate_tolerance
+
+    @bit_rate_tolerance.setter
+    def bit_rate_tolerance(self, int value):
+        self.ptr.bit_rate_tolerance = value
 
     # TODO: Does it conceptually make sense that this is on streams, instead
     # of on the container?
-    property thread_count:
-        def __get__(self):
-            return self.ptr.thread_count
-        def __set__(self, int value):
-            self.ptr.thread_count = value
-
-
-
+    @property
+    def thread_count(self):
+        return self.ptr.thread_count
+    @thread_count.setter
+    def thread_count(self, int value):
+        self.ptr.thread_count = value

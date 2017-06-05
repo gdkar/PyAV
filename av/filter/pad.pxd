@@ -4,7 +4,6 @@ from av.filter.context cimport FilterContext
 from av.filter.filter cimport Filter
 from av.filter.link cimport FilterLink
 
-
 cdef class FilterPad(object):
 
     cdef readonly Filter filter

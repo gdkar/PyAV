@@ -3,7 +3,6 @@ from av.audio.layout cimport get_audio_layout
 from av.audio.plane cimport AudioPlane
 from av.utils cimport err_check
 
-
 cdef object _cinit_bypass_sentinel
 
 cdef AudioFrame alloc_audio_frame():
@@ -15,11 +14,10 @@ cdef AudioFrame alloc_audio_frame():
     """
     return AudioFrame.__new__(AudioFrame, _cinit_bypass_sentinel)
 
-
 cdef class AudioFrame(Frame):
 
     """A frame of audio."""
-    
+
     def __cinit__(self, format='s16', layout='stereo', samples=0, align=True):
         if format is _cinit_bypass_sentinel:
             return
@@ -29,7 +27,6 @@ cdef class AudioFrame(Frame):
         self._init(cy_format.sample_fmt, cy_layout.layout, samples, align)
 
     cdef _init(self, lib.AVSampleFormat format, uint64_t layout, unsigned int nb_samples, bint align):
-
         self.align = align
         self.ptr.nb_samples = nb_samples
         self.ptr.format = <int>format
@@ -37,13 +34,10 @@ cdef class AudioFrame(Frame):
 
         # HACK: It really sucks to do this twice.
         self._init_user_attributes()
-
         cdef size_t buffer_size
         if self.layout.channels and nb_samples:
-            
             # Cleanup the old buffer.
             lib.av_freep(&self._buffer)
-
             # Get a new one.
             self._buffer_size = err_check(lib.av_samples_get_buffer_size(
                 NULL,
@@ -58,14 +52,13 @@ cdef class AudioFrame(Frame):
 
             # Connect the data pointers to the buffer.
             err_check(lib.avcodec_fill_audio_frame(
-                self.ptr, 
-                len(self.layout.channels), 
+                self.ptr,
+                len(self.layout.channels),
                 <lib.AVSampleFormat>self.ptr.format,
                 self._buffer,
                 self._buffer_size,
                 self.align
             ))
-            
             self._init_planes(AudioPlane)
 
     def __dealloc__(self):
@@ -89,7 +82,7 @@ cdef class AudioFrame(Frame):
         self.nb_channels = lib.av_get_channel_layout_nb_channels(self.ptr.channel_layout)
         self.nb_planes = self.nb_channels if lib.av_sample_fmt_is_planar(<lib.AVSampleFormat>self.ptr.format) else 1
         self._init_planes(AudioPlane)
-    
+
     def __repr__(self):
         return '<av.%s %d, %d samples at %dHz, %s, %s at 0x%x>' % (
             self.__class__.__name__,
@@ -100,39 +93,63 @@ cdef class AudioFrame(Frame):
             self.format.name,
             id(self),
         )
-    
-    property samples:
+    @property
+    def samples(self):
         """Number of audio samples (per channel) """
-        def __get__(self):
-            return self.ptr.nb_samples
-    
-    property sample_rate:
+        return self.ptr.nb_samples
+    @property
+    def sample_rate(self):
         """Sample rate of the audio data. """
-        def __get__(self):
-            return self.ptr.sample_rate
-        def __set__(self, value):
-            self.ptr.sample_rate = value
+        return self.ptr.sample_rate
+    @sample_rate.setter
+    def sample_rate(self, value):
+        self.ptr.sample_rate = value
 
-    property rate:
-        def __get__(self):
-            return self.ptr.sample_rate
-        def __set__(self, value):
-            self.ptr.sample_rate = value
+    @property
+    def rate(self):
+        return self.ptr.sample_rate
+    @rate.setter
+    def rate(self, value):
+        self.ptr.sample_rate = value
 
-    def to_nd_array(self, **kwargs):
-        """Get a numpy array of this frame.
-        Any ``**kwargs`` are passed to :meth:`AudioFrame.reformat`.
-        """
-
-
-        # map avcodec type to numpy type
-        try:
-            dtype = {
-                's16p':'<i2'
-            }[self.format.name]
-        except:
-            raise AssertionError("Don't know how to convert data type.", self.format.name)
-
-        # convert and return data
+    def to_ndarray(self,**kwargs):
         import numpy as np
-        return np.vstack(map(lambda x: np.frombuffer(x, np.dtype(dtype)), self.planes))
+        cdef str fname = self.format.packed.name
+        if fname == 'dbl': dtype=np.float64
+        elif fname=='flt': dtype=np.float32
+        elif fname=='s32': dtype=np.int32
+        elif fname=='s16': dtype=np.int16
+        elif fname=='s8' : dtype=np.int8
+        elif fname=='u8' : dtype=np.uint8
+        else             : raise TypeError("type not convertible")
+        if self.format.is_packed:
+            dtype=np.dtype((dtype,len(self.layout.channels)))
+            return np.frombuffer(self.planes[0],dtype)
+        else:
+            return np.vstack(np.frombuffer(plane,dtype=dtype) for plane in self.planes).T
+    @classmethod
+    def from_ndarray(cls, array):
+        # TODO: We could stand to be more accepting.
+        if array.ndim == 1:
+            layout = AudioLayout(1)
+        elif array.ndim == 2:
+            layout = AudioLayout(array.shape[1])
+        else:
+            raise ValueError('array must be one or two dimensional')
+
+        if array.dtype ==   'uint8':  format = 'u8p'
+        elif array.dtype == 'int16':  format = 's16p'
+        elif array.dtype == 'int32':  format = 's32p'
+        elif array.dtype == 'int64':  format = 's64p'
+        elif array.dtype == 'float32':format = 'fltp'
+        elif array.dtype == 'float64':format = 'dblp'
+        else:
+            raise ValueError('array dtype must be one of: uint8, int16, int32, int64, float32, float64')
+        cdef AudioFrame frame = cls(format, layout, array.shape[0])
+        if array.ndim == 1:
+            frame.planes[0].update(array)
+        else:
+            for i in range(array.shape[1]):
+                frame.planes[i].update(array[::,i])
+
+        return frame

@@ -1,7 +1,7 @@
+cimport libav as lib
 from libc.stdint cimport uint64_t
 
 from warnings import warn
-
 from av.audio.format cimport get_audio_format
 from av.descriptor cimport wrap_avclass
 from av.utils cimport media_type_to_string
@@ -9,15 +9,12 @@ from av.video.format cimport get_video_format
 
 cdef object _cinit_sentinel = object()
 
-
-
 cdef Codec wrap_codec(lib.AVCodec *ptr):
     cdef Codec codec = Codec(_cinit_sentinel)
     codec.ptr = ptr
     codec.is_encoder = lib.av_codec_is_encoder(ptr)
     codec._init()
     return codec
-
 
 cdef flag_in_bitfield(uint64_t bitfield, uint64_t flag):
     # Not every flag exists in every version of FFMpeg and LibAV, so we
@@ -32,7 +29,6 @@ class UnknownCodecError(ValueError):
 
 
 cdef class Codec(object):
-    
     """A single encoding or decoding codec.
 
     This object exposes information about an availible codec, and an avenue to
@@ -55,9 +51,9 @@ cdef class Codec(object):
         if name is _cinit_sentinel:
             return
 
-        if mode == 'w':
+        if mode in ('w','wb'):
             self.ptr = lib.avcodec_find_encoder_by_name(name)
-        elif mode == 'r':
+        elif mode in ('r','rb'):
             self.ptr = lib.avcodec_find_decoder_by_name(name)
         else:
             raise ValueError('Invalid mode; must be "r" or "w".', mode)
@@ -68,7 +64,7 @@ cdef class Codec(object):
 
         if not self.ptr:
             raise UnknownCodecError(name)
-        
+
         self.desc = lib.avcodec_descriptor_get(self.ptr.id)
         if not self.desc:
             raise RuntimeError('No codec descriptor for %r.' % name)
@@ -82,114 +78,137 @@ cdef class Codec(object):
     def create(self):
         from .context import CodecContext
         return CodecContext.create(self)
+    @property
+    def is_decoder(self):
+        return not self.is_encoder
 
-    property is_decoder:
-        def __get__(self):
-            return not self.is_encoder
+    @property
+    def descriptor(self):
+        return wrap_avclass(self.ptr.priv_class)
 
-    property descriptor:
-        def __get__(self): return wrap_avclass(self.ptr.priv_class)
+    @property
+    def name(self):
+        return self.ptr.name or ''
+    @property
+    def long_name(self):
+        return self.ptr.long_name or ''
+    @property
+    def type(self):
+        return media_type_to_string(self.ptr.type)
+    @property
+    def id(self):
+        return self.ptr.id
 
-    property name:
-        def __get__(self): return self.ptr.name or ''
-    property long_name:
-        def __get__(self): return self.ptr.long_name or ''
-    property type:
-        def __get__(self): return media_type_to_string(self.ptr.type)
-    property id:
-        def __get__(self): return self.ptr.id
+    @property
+    def frame_rates(self):
+        return <int>self.ptr.supported_framerates
+    @property
+    def audio_rates(self):
+        return <int>self.ptr.supported_samplerates
 
-    property frame_rates:
-        def __get__(self): return <int>self.ptr.supported_framerates
-    property audio_rates:
-        def __get__(self): return <int>self.ptr.supported_samplerates
-
-    property video_formats:
-        def __get__(self):
-
-            if not self.ptr.pix_fmts:
-                return
-
-            ret = []
-            cdef lib.AVPixelFormat *ptr = self.ptr.pix_fmts
-            while ptr[0] != -1:
-                ret.append(get_video_format(ptr[0], 0, 0))
-                ptr += 1
-            return ret
-
-    property audio_formats:
-       def __get__(self):
-
-           if not self.ptr.sample_fmts:
-               return
-
-           ret = []
-           cdef lib.AVSampleFormat *ptr = self.ptr.sample_fmts
-           while ptr[0] != -1:
-               ret.append(get_audio_format(ptr[0]))
-               ptr += 1
-           return ret
+    @property
+    def video_formats(self):
+        if not self.ptr.pix_fmts:
+            return
+        ret = []
+        cdef lib.AVPixelFormat *ptr = self.ptr.pix_fmts
+        while ptr[0] != -1:
+            ret.append(get_video_format(ptr[0], 0, 0))
+            ptr += 1
+        return ret
+    @property
+    def audio_formats(self):
+        if not self.ptr.sample_fmts:
+            return
+        ret = []
+        cdef lib.AVSampleFormat *ptr = self.ptr.sample_fmts
+        while ptr[0] != -1:
+            ret.append(get_audio_format(ptr[0]))
+            ptr += 1
+        return ret
 
 
     # Capabilities.
-    property draw_horiz_band:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DRAW_HORIZ_BAND)
-    property dr1:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DR1)
-    property truncated:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_TRUNCATED)
-    property hwaccel:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_HWACCEL)
-    property delay:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DELAY)
-    property small_last_frame:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SMALL_LAST_FRAME)
-    property hwaccel_vdpau:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_HWACCEL_VDPAU)
-    property subframes:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SUBFRAMES)
-    property experimental:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_EXPERIMENTAL)
-    property channel_conf:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_CHANNEL_CONF)
-    property neg_linesizes:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_NEG_LINESIZES)
-    property frame_threads:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_FRAME_THREADS)
-    property slice_threads:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SLICE_THREADS)
-    property param_change:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_PARAM_CHANGE)
-    property auto_threads:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_AUTO_THREADS)
-    property variable_frame_size:
-        def __get__(self): return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_VARIABLE_FRAME_SIZE)
+    @property
+    def draw_horiz_band(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DRAW_HORIZ_BAND)
+    @property
+    def dr1(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DR1)
+    @property
+    def truncated(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_TRUNCATED)
+    @property
+    def hwaccel(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_HWACCEL)
+    @property
+    def delay(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_DELAY)
+    @property
+    def small_last_frame(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SMALL_LAST_FRAME)
+    @property
+    def hwaccel_vdpau(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_HWACCEL_VDPAU)
+    @property
+    def subframes(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SUBFRAMES)
+    @property
+    def experimental(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_EXPERIMENTAL)
+    @property
+    def channel_conf(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_CHANNEL_CONF)
+    @property
+    def neg_linesizes(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_NEG_LINESIZES)
+    @property
+    def frame_threads(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_FRAME_THREADS)
+    @property
+    def slice_threads(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_SLICE_THREADS)
+    @property
+    def param_change(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_PARAM_CHANGE)
+    @property
+    def auto_threads(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_AUTO_THREADS)
+    @property
+    def variable_frame_size(self):
+        return flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_VARIABLE_FRAME_SIZE)
 
     # Capabilities and properties overlap.
     # TODO: Is this really the right way to combine these things?
-    property intra_only:
-        def __get__(self): return (
+    @property
+    def intra_only(self):
+        return (
             flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_INTRA_ONLY) or
             flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_INTRA_ONLY)
         )
-    property lossless:
-        def __get__(self): return (
+    @property
+    def lossless(self):
+        return (
             flag_in_bitfield(self.ptr.capabilities, lib.CODEC_CAP_LOSSLESS) or
             flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_LOSSLESS)
         )
-    property lossy:
-        def __get__(self): return (
+    @property
+    def lossy(self):
+        return (
             flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_LOSSY) or
             not self.lossless
         )
 
     # Properties.
-    property reorder:
-        def __get__(self): return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_REORDER)
-    property bitmap_sub:
-        def __get__(self): return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_BITMAP_SUB)
-    property text_sub:
-        def __get__(self): return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_TEXT_SUB)
+    @property
+    def reorder(self):
+        return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_REORDER)
+    @property
+    def bitmap_sub(self):
+        return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_BITMAP_SUB)
+    @property
+    def text_sub(self):
+        return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_TEXT_SUB)
 
 
 

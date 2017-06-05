@@ -3,7 +3,7 @@ from libc.limits cimport INT_MAX
 from cpython cimport Py_INCREF, PyTuple_New, PyTuple_SET_ITEM
 
 from av.plane cimport Plane
-from av.utils cimport avrational_to_faction, to_avrational
+from av.utils cimport avrational_to_fraction, to_avrational
 
 from fractions import Fraction
 
@@ -64,12 +64,11 @@ cdef class Frame(object):
             self.ptr.height = source.ptr.height
             self.ptr.channel_layout = source.ptr.channel_layout
             self.ptr.channels = source.ptr.channels
-    
+
     cdef _init_user_attributes(self):
         pass # Dummy to match the API of the others.
 
     cdef _rebase_time(self, lib.AVRational dst):
-
         if not dst.num:
             raise ValueError('Cannot rebase to zero time.')
 
@@ -88,35 +87,36 @@ cdef class Frame(object):
 
         self._time_base = dst
 
+    @property
+    def dts(self):
+        if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:
+            return None
+        return self.ptr.pkt_dts
 
-    property dts:
-        def __get__(self):
-            if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:
-                return None
-            return self.ptr.pkt_dts
+    @property
+    def pts(self):
+        if self.ptr.pts == lib.AV_NOPTS_VALUE:
+            return None
+        return self.ptr.pts
+    @pts.setter
+    def pts(self, value):
+        if value is None:
+            self.ptr.pts = lib.AV_NOPTS_VALUE
+        else:
+            self.ptr.pts = value
 
-    property pts:
-        def __get__(self):
-            if self.ptr.pts == lib.AV_NOPTS_VALUE:
-                return None
-            return self.ptr.pts
-        def __set__(self, value):
-            if value is None:
-                self.ptr.pts = lib.AV_NOPTS_VALUE
-            else:
-                self.ptr.pts = value
+    @property
+    def time(self):
+        if self.ptr.pts == lib.AV_NOPTS_VALUE:
+            return None
+        else:
+            return float(self.ptr.pts) * self._time_base.num / self._time_base.den
 
-    property time:
-        def __get__(self):
-            if self.ptr.pts == lib.AV_NOPTS_VALUE:
-                return None
-            else:
-                return float(self.ptr.pts) * self._time_base.num / self._time_base.den
-
-    property time_base:
-        def __get__(self):
-            if self._time_base.num:
-                return avrational_to_faction(&self._time_base)
-        def __set__(self, value):
-            to_avrational(value, &self._time_base)
+    @property
+    def time_base(self):
+        if self._time_base.num:
+            return avrational_to_fraction(&self._time_base)
+    @time_base.setter
+    def time_base(self, value):
+        to_avrational(value, &self._time_base)
 

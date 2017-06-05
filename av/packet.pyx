@@ -1,38 +1,39 @@
 cimport libav as lib
 
 from av.bytesource cimport bytesource
-from av.utils cimport avrational_to_faction, to_avrational, err_check
-
+from av.utils cimport avrational_to_fraction, to_avrational, err_check
 
 cdef class Packet(Buffer):
-    
+
     """A packet of encoded data within a :class:`~av.format.Stream`.
 
     This may, or may not include a complete object within a stream.
     :meth:`decode` must be called to extract encoded data.
 
     """
-
     def __cinit__(self, input=None):
         with nogil:
-            lib.av_init_packet(&self.struct)
+            self.ptr = lib.av_packet_alloc()
 
     def __init__(self, input=None):
-        
+
         cdef size_t size = 0
         cdef ByteSource source = None
 
         if input is None:
             return
-
         if isinstance(input, (int, long)):
             size = input
         else:
             source = bytesource(input)
             size = source.length
-
+        cdef lib.AVPacket *ptr = self.ptr
+        cdef int err = 0
         if size:
-            err_check(lib.av_new_packet(&self.struct, size))
+            with nogil:
+                lib.av_packet_unref(self.ptr)
+                err = lib.av_grow_packet(self.ptr,size)
+            err_check(err)
 
         if source is not None:
             self.update_buffer(source)
@@ -42,35 +43,51 @@ cdef class Packet(Buffer):
 
     def __dealloc__(self):
         with nogil:
-            lib.av_free_packet(&self.struct)
-    
+            lib.av_packet_free(&self.ptr)
+
     def __repr__(self):
         return '<av.%s of #%d, dts=%s, pts=%s; %s bytes at 0x%x>' % (
             self.__class__.__name__,
             self._stream.index if self._stream else 0,
             self.dts,
             self.pts,
-            self.struct.size,
+            self.ptr.size,
             id(self),
         )
-    
+
     # Buffer protocol.
     cdef size_t _buffer_size(self):
-        return self.struct.size
+        return self.ptr.size
+
     cdef void*  _buffer_ptr(self):
-        return self.struct.data
+        return self.ptr.data
     #cdef bint _buffer_writable(self):
     #    return self.source is None
 
+    def unref(self):
+        with nogil:
+            lib.av_packet_unref(self.ptr)
+
+    def ref(self, Packet other):
+        cdef int err
+        cdef lib.AVPacket *src
+        cdef lib.AVPacket *dst
+        with nogil:
+            lib.av_packet_unref(self.ptr)
+        if other is not None:
+            src = other.ptr
+            dst = self.ptr
+            with nogil:
+                err = lib.av_packet_ref(dst, src)
+            err_check(err)
+
     def copy(self):
-        raise NotImplementedError()
         cdef Packet copy = Packet()
-        # copy.struct.size = self.struct.size
-        # copy.struct.data = NULL
+        with nogil:
+            lib.av_packet_ref(copy.ptr,self.ptr)
         return copy
 
     cdef _rebase_time(self, lib.AVRational dst):
-
         if not dst.num:
             raise ValueError('Cannot rebase to zero time.')
 
@@ -80,22 +97,21 @@ cdef class Packet(Buffer):
 
         if self._time_base.num == dst.num and self._time_base.den == dst.den:
             return
-
         # TODO: Isn't there a function to do this?
 
-        if self.struct.pts != lib.AV_NOPTS_VALUE:
-            self.struct.pts = lib.av_rescale_q(
-                self.struct.pts,
+        if self.ptr.pts != lib.AV_NOPTS_VALUE:
+            self.ptr.pts = lib.av_rescale_q(
+                self.ptr.pts,
                 self._time_base, dst
             )
-        if self.struct.dts != lib.AV_NOPTS_VALUE:
-            self.struct.dts = lib.av_rescale_q(
-                self.struct.dts,
+        if self.ptr.dts != lib.AV_NOPTS_VALUE:
+            self.ptr.dts = lib.av_rescale_q(
+                self.ptr.dts,
                 self._time_base, dst
             )
-        if self.struct.duration > 0:
-            self.struct.duration = lib.av_rescale_q(
-                self.struct.duration,
+        if self.ptr.duration > 0:
+            self.ptr.duration = lib.av_rescale_q(
+                self.ptr.duration,
                 self._time_base, dst
             )
 
@@ -112,54 +128,67 @@ cdef class Packet(Buffer):
         res = self._stream.decode(self, count=1)
         return res[0] if res else None
 
-    property stream_index:
-        def __get__(self):
-            return self.struct.stream_index
+    @property
+    def stream_index(self):
+        return self.ptr.stream_index
 
-    property stream:
-        def __get__(self):
-            return self._stream
-        def __set__(self, Stream stream):
-            self._stream = stream
-            #self._rebase_time(stream._stream.time_base)
-            self.struct.stream_index = stream._stream.index
+    @property
+    def stream(self):
+        return self._stream
 
-    property time_base:
-        def __get__(self):
-            return avrational_to_faction(&self._time_base)
-        def __set__(self, value):
-            to_avrational(value, &self._time_base)
+    @stream.setter
+    def stream(self, Stream stream):
+        self._stream = stream
+        #self._rebase_time(stream._stream.time_base)
+        self.ptr.stream_index = stream._stream.index
 
-    property pts:
-        def __get__(self):
-            if self.struct.pts != lib.AV_NOPTS_VALUE:
-                return self.struct.pts
-        def __set__(self, v):
-            if v is None:
-                self.struct.pts = lib.AV_NOPTS_VALUE
-            else:
-                self.struct.pts = v
-    
-    property dts:
-        def __get__(self):
-            if self.struct.dts != lib.AV_NOPTS_VALUE:
-                return self.struct.dts
-        def __set__(self, v):
-            if v is None:
-                self.struct.dts = lib.AV_NOPTS_VALUE
-            else:
-                self.struct.dts = v
-    
-    property pos:
-        def __get__(self): return None if self.struct.pos == -1 else self.struct.pos
-    property size:
-        def __get__(self): return self.struct.size
-    property duration:
-        def __get__(self): return None if self.struct.duration == lib.AV_NOPTS_VALUE else self.struct.duration
+    @property
+    def time_base(self):
+        return avrational_to_fraction(&self._time_base)
 
-    property is_keyframe:
-        def __get__(self): return bool(self.struct.flags & lib.AV_PKT_FLAG_KEY)
+    @time_base.setter
+    def time_base(self, value):
+        to_avrational(value, &self._time_base)
 
-    property is_corrupt:
-        def __get__(self): return bool(self.struct.flags & lib.AV_PKT_FLAG_CORRUPT)
-    
+    @property
+    def pts(self):
+        if self.ptr.pts != lib.AV_NOPTS_VALUE:
+            return self.ptr.pts
+    @pts.setter
+    def pts(self, v):
+        if v is None:
+            self.ptr.pts = lib.AV_NOPTS_VALUE
+        else:
+            self.ptr.pts = v
+
+    @property
+    def dts(self):
+        if self.ptr.dts != lib.AV_NOPTS_VALUE:
+            return self.ptr.dts
+
+    @dts.setter
+    def dts(self, v):
+        if v is None:
+            self.ptr.dts = lib.AV_NOPTS_VALUE
+        else:
+            self.ptr.dts = v
+
+    @property
+    def pos(self):
+        return None if self.ptr.pos == -1 else self.ptr.pos
+
+    @property
+    def size(self):
+        return self.ptr.size
+
+    @property
+    def duration(self):
+        return None if self.ptr.duration == lib.AV_NOPTS_VALUE else self.ptr.duration
+
+    @property
+    def is_keyframe(self):
+        return bool(self.ptr.flags & lib.AV_PKT_FLAG_KEY)
+
+    @property
+    def is_corrupt(self):
+        return bool(self.ptr.flags & lib.AV_PKT_FLAG_CORRUPT)

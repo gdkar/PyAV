@@ -1,7 +1,7 @@
-
+from __future__ import print_function
 from fractions import Fraction
 
-from common import *
+from .common import *
 
 from av.buffer import Buffer
 from av.packet import Packet
@@ -22,13 +22,13 @@ def iter_raw_frames(path, packet_sizes, ctx):
             read_size = f.readinto(packet)
             assert size
             assert read_size == size
-            print i + 1, size, read_size
+            print (i + 1, size, read_size)
             if not read_size:
                 break
             for frame in ctx.decode(packet):
-                print '   ', frame
+                print ('   ', frame)
                 yield frame
-        print 'flushing...'
+        print ('flushing...')
         while True:
             try:
                 frames = ctx.decode(None)
@@ -37,7 +37,7 @@ def iter_raw_frames(path, packet_sizes, ctx):
                     raise
                 break
             for frame in frames:
-                print '   ', frame
+                print ('   ', frame)
                 yield frame
             if not frames:
                 break
@@ -57,7 +57,7 @@ class TestCodecContext(TestCase):
     def image_sequence_encode(self, codec_name):
 
         try:
-            codec = Codec(codec_name, 'w')
+            codec = Codec(codec_name, 'wb')
         except UnknownCodecError:
             raise SkipTest()
 
@@ -80,10 +80,10 @@ class TestCodecContext(TestCase):
         frame_count = 1
         path_list = []
         for frame in iter_frames(container, video_stream):
-            
+
             new_frame = frame.reformat(width, height, pix_fmt)
             new_packets = ctx.encode(new_frame)
-            
+
             self.assertEqual(len(new_packets), 1)
             new_packet = new_packets[0]
 
@@ -168,10 +168,7 @@ class TestCodecContext(TestCase):
         with open(path, 'wb') as f:
 
             for frame in iter_frames(container, video_stream):
-
-
                 if test_bad:
-
                     bad_frame = frame.reformat(width, 100, pix_fmt)
                     with self.assertRaises(ValueError):
                         ctx.encode(bad_frame)
@@ -229,7 +226,7 @@ class TestCodecContext(TestCase):
     def audio_encoding(self, codec_name):
 
         try:
-            codec = Codec(codec_name, 'w')
+            codec = Codec(codec_name, 'wb')
         except UnknownCodecError:
             raise SkipTest()
 
@@ -262,7 +259,7 @@ class TestCodecContext(TestCase):
 
         test_bad = False
 
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             for frame in iter_frames(container, audio_stream):
 
                 # We need to let the encoder retime.

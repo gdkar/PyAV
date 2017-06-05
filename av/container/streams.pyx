@@ -32,9 +32,7 @@ cdef class StreamContainer(object):
         return self._streams[index]
 
     def get(self, streams=None, **typed):
-
         selection = []
-
         if isinstance(streams, Stream):
             selection.append(streams)
         elif isinstance(streams, (tuple, list)):
@@ -56,5 +54,3 @@ cdef class StreamContainer(object):
                 selection.append(streams[i])
 
         return selection or self._streams[:]
-
-

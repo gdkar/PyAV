@@ -7,9 +7,7 @@ from av.frame cimport Frame
 from av.packet cimport Packet
 from av.utils cimport err_check
 
-
 cdef class AudioCodecContext(CodecContext):
-
 
     cdef _init(self, lib.AVCodecContext *ptr, lib.AVCodec *codec):
         CodecContext._init(self, ptr, codec)
@@ -26,7 +24,6 @@ cdef class AudioCodecContext(CodecContext):
         self.ptr.time_base.den = self.ptr.sample_rate
 
     cdef _prepare_frames_for_encode(self, Frame input_frame):
-
         cdef AudioFrame frame = input_frame
 
         # Resample. A None frame will flush the resampler, and then the fifo (if used).
@@ -39,7 +36,7 @@ cdef class AudioCodecContext(CodecContext):
                 self.ptr.sample_rate
             )
         frame = self.resampler.resample(frame)
-        
+
         cdef bint is_flushing = input_frame is None
         cdef bint use_fifo = not (self.ptr.codec.capabilities & lib.CODEC_CAP_VARIABLE_FRAME_SIZE)
 
@@ -49,15 +46,12 @@ cdef class AudioCodecContext(CodecContext):
             if frame is not None:
                 self.fifo.write(frame)
             frames = self.fifo.read_many(self.ptr.frame_size, partial=is_flushing)
-
         else:
             frames = [frame]
-
         return frames
-
     cdef _encode(self, Frame frame):
         """Encodes a frame of audio, returns a packet if one is ready.
-        The output packet does not necessarily contain data for the most recent frame, 
+        The output packet does not necessarily contain data for the most recent frame,
         as encoders can delay, split, and combine input frames internally as needed.
         If called with with no args it will flush out the encoder and return the buffered
         packets until there are none left, at which it will return None.
@@ -68,14 +62,13 @@ cdef class AudioCodecContext(CodecContext):
 
         err_check(lib.avcodec_encode_audio2(
             self.ptr,
-            &packet.struct,
+            packet.ptr,
             frame.ptr if frame is not None else NULL,
             &got_packet,
         ))
-
         if got_packet:
             return packet
-        
+
     cdef Frame _alloc_next_frame(self):
         return alloc_audio_frame()
 
@@ -88,12 +81,9 @@ cdef class AudioCodecContext(CodecContext):
         data_consumed[0] = err_check(lib.avcodec_decode_audio4(self.ptr, self.next_frame.ptr, &completed_frame, packet))
         if not completed_frame:
             return
-        
         cdef AudioFrame frame = self.next_frame
         self.next_frame = None
-        
         frame._init_user_attributes()
-
         return frame
 
     cdef _setup_decoded_frame(self, Frame frame):
@@ -101,48 +91,54 @@ cdef class AudioCodecContext(CodecContext):
         cdef AudioFrame aframe = frame
         aframe._init_user_attributes()
 
-    property frame_size:
+    @property
+    def frame_size(self):
         """Number of samples per channel in an audio frame."""
-        def __get__(self): return self.ptr.frame_size
-    
-    property sample_rate:
+        return self.ptr.frame_size
+    @property
+    def sample_rate(self):
         """Number samples of per second."""
-        def __get__(self):
-            return self.ptr.sample_rate
-        def __set__(self, int value):
-            self.ptr.sample_rate = value
+        return self.ptr.sample_rate
+    @sample_rate.setter
+    def sample_rate(self, int value):
+        self.ptr.sample_rate = value
 
-    property rate:
+    @property
+    def rate(self):
         """Another name for :attr:`sample_rate`."""
-        def __get__(self):
-            return self.sample_rate
-        def __set__(self, value):
-            self.sample_rate = value
+        return self.sample_rate
+    @rate.setter
+    def rate(self, value):
+        self.sample_rate = value
 
     # TODO: Integrate into AudioLayout.
-    property channels:
-        def __get__(self):
-            return self.ptr.channels
-        def __set__(self, value):
-            self.ptr.channels = value
-            self.ptr.channel_layout = lib.av_get_default_channel_layout(value)
-    property channel_layout:
-        def __get__(self):
-            return self.ptr.channel_layout
+    @property
+    def channels(self):
+        return self.ptr.channels
 
-    property layout:
-        def __get__(self):
-            return get_audio_layout(self.ptr.channels, self.ptr.channel_layout)
-        def __set__(self, value):
-            cdef AudioLayout layout = AudioLayout(value)
-            self.ptr.channel_layout = layout.layout
-            self.ptr.channels = layout.nb_channels
+    @channels.setter
+    def channels(self, value):
+        self.ptr.channels = value
+        self.ptr.channel_layout = lib.av_get_default_channel_layout(value)
 
-    property format:
-        def __get__(self):
-            return get_audio_format(self.ptr.sample_fmt)
-        def __set__(self, value):
-            cdef AudioFormat format = AudioFormat(value)
-            self.ptr.sample_fmt = format.sample_fmt
+    @property
+    def channel_layout(self):
+        return self.ptr.channel_layout
 
-    
+    @property
+    def layout(self):
+        return get_audio_layout(self.ptr.channels, self.ptr.channel_layout)
+
+    @layout.setter
+    def layout(self, value):
+        cdef AudioLayout layout = AudioLayout(value)
+        self.ptr.channel_layout = layout.layout
+        self.ptr.channels = layout.nb_channels
+
+    @property
+    def format(self):
+        return get_audio_format(self.ptr.sample_fmt)
+    @format.setter
+    def format(self, value):
+        cdef AudioFormat format = AudioFormat(value)
+        self.ptr.sample_fmt = format.sample_fmt

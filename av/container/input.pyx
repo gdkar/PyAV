@@ -12,10 +12,9 @@ from av.utils import AVError # not cimport
 cdef class InputContainer(Container):
 
     def __cinit__(self, *args, **kwargs):
-
         cdef int i
 
-        # Create several clones of out one set of options, since 
+        # Create several clones of out one set of options, since
         # avformat_find_stream_info expects an array of them.
         # TODO: Expose per-stream options at some point.
         cdef lib.AVDictionary **c_options = NULL
@@ -51,17 +50,21 @@ cdef class InputContainer(Container):
 
         self.metadata = avdict_to_dict(self.proxy.ptr.metadata)
 
-    property start_time:
-        def __get__(self): return self.proxy.ptr.start_time
+    @property
+    def start_time(self):
+        return self.proxy.ptr.start_time
 
-    property duration:
-        def __get__(self): return self.proxy.ptr.duration
+    @property
+    def duration(self):
+        return self.proxy.ptr.duration
 
-    property bit_rate:
-        def __get__(self): return self.proxy.ptr.bit_rate
+    @property
+    def bit_rate(self):
+        return self.proxy.ptr.bit_rate
 
-    property size:
-        def __get__(self): return lib.avio_size(self.proxy.ptr.pb)
+    @property
+    def size(self):
+        return lib.avio_size(self.proxy.ptr.pb)
 
     def demux(self, *args, **kwargs):
         """demux(streams=None, video=None, audio=None, subtitles=None)
@@ -102,18 +105,18 @@ cdef class InputContainer(Container):
                 packet = Packet()
                 try:
                     with nogil:
-                        ret = lib.av_read_frame(self.proxy.ptr, &packet.struct)
+                        ret = lib.av_read_frame(self.proxy.ptr, packet.ptr)
                     self.proxy.err_check(ret)
                 except AVError:
                     break
 
-                if include_stream[packet.struct.stream_index]:
+                if include_stream[packet.ptr.stream_index]:
                     # If AVFMTCTX_NOHEADER is set in ctx_flags, then new streams
                     # may also appear in av_read_frame().
                     # http://ffmpeg.org/doxygen/trunk/structAVFormatContext.html
                     # TODO: find better way to handle this
-                    if packet.struct.stream_index < len(self.streams):
-                        packet._stream = self.streams[packet.struct.stream_index]
+                    if packet.ptr.stream_index < len(self.streams):
+                        packet._stream = self.streams[packet.ptr.stream_index]
                         # Keep track of this so that remuxing is easier.
                         packet._time_base = packet._stream._stream.time_base
                         yield packet

@@ -4,18 +4,13 @@ from cpython cimport PyBuffer_FillInfo, PyBUF_WRITABLE
 
 from av.bytesource cimport ByteSource, bytesource
 
-
 cdef class _Buffer(object):
-
     cdef size_t _buffer_size(self):
         return 0
-
     cdef void* _buffer_ptr(self):
         return NULL
-
     cdef bint _buffer_writable(self):
         return True
-
     # Legacy buffer support. For `buffer` and PIL.
     # See: http://docs.python.org/2/c-api/typeobj.html#PyBufferProcs
 
@@ -46,14 +41,12 @@ cdef class _Buffer(object):
 
 
 cdef class Buffer(_Buffer):
-
-    property buffer_size:
-        def __get__(self):
-            return self._buffer_size()
-
-    property buffer_ptr:
-        def __get__(self):
-            return <size_t>self._buffer_ptr()
+    @property
+    def buffer_size(self):
+        return self._buffer_size()
+    @property
+    def buffer_ptr(self):
+        return <size_t>self._buffer_ptr()
 
     def to_bytes(self):
         return <bytes>(<char*>self._buffer_ptr())[:self._buffer_size()]

@@ -2,7 +2,6 @@ from cpython cimport Py_INCREF, PyTuple_New, PyTuple_SET_ITEM
 
 cimport libav as lib
 
-
 cdef object _cinit_bypass_sentinel
 
 cdef AudioLayout get_audio_layout(int channels, uint64_t c_layout):
@@ -65,14 +64,11 @@ cdef dict channel_descriptions = {
     'LFE2': 'low frequency 2',
 }
 
-
 cdef class AudioLayout(object):
-
     def __init__(self, layout):
 
         if layout is _cinit_bypass_sentinel:
             return
-
         cdef uint64_t c_layout
         if isinstance(layout, int):
             if layout < 0 or layout > 8:
@@ -105,32 +101,25 @@ cdef class AudioLayout(object):
 
     def __repr__(self):
         return '<av.%s %r>' % (self.__class__.__name__, self.name)
-
-    property name:
+    @property
+    def name(self):
         """The canonical name of the audio layout."""
-        def __get__(self):
-            cdef char out[32]
-            # Passing 0 as number of channels... fix this later?
-            lib.av_get_channel_layout_string(out, 32, 0, self.layout)
-            return <str>out
-
+        cdef char out[32]
+        # Passing 0 as number of channels... fix this later?
+        lib.av_get_channel_layout_string(out, 32, 0, self.layout)
+        return <str>out
 
 cdef class AudioChannel(object):
 
     def __cinit__(self, AudioLayout layout, int index):
         self.channel = lib.av_channel_layout_extract_channel(layout.layout, index)
-
     def __repr__(self):
         return '<av.%s %r (%s)>' % (self.__class__.__name__, self.name, self.description)
-
-    property name:
+    @property
+    def name(self):
         """The canonical name of the audio channel."""
-        def __get__(self):
-            return lib.av_get_channel_name(self.channel)
-
-    property description:
+        return lib.av_get_channel_name(self.channel)
+    @property
+    def description(self):
         """A human description of the audio channel."""
-        def __get__(self):
-            return channel_descriptions.get(self.name)
-
-
+        return channel_descriptions.get(self.name)

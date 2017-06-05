@@ -1,7 +1,5 @@
-from libc.stdint cimport int64_t
-
 cimport libav as lib
-
+from libc.stdint cimport int64_t
 from av.codec.codec cimport Codec
 from av.container.core cimport ContainerProxy
 from av.frame cimport Frame
@@ -11,9 +9,7 @@ from av.packet cimport Packet
 cdef class CodecContext(object):
 
     cdef lib.AVCodecContext *ptr
-
     cdef ContainerProxy container
-
     # Used as a signal that this is within a stream, and also for us to access
     # that stream. This is set "manually" by the stream after constructing
     # this object.
@@ -34,7 +30,7 @@ cdef class CodecContext(object):
     # Public API.
     cpdef open(self, bint strict=?)
     cpdef close(self, bint strict=?)
-    
+
     cdef _set_default_time_base(self)
 
     # Wraps both versions of the transcode API, returning lists.
@@ -68,4 +64,3 @@ cdef class CodecContext(object):
 
 
 cdef CodecContext wrap_codec_context(lib.AVCodecContext*, lib.AVCodec*, ContainerProxy)
-

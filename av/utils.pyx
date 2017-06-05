@@ -43,7 +43,7 @@ cdef object _local = local()
 cdef int _err_count = 0
 
 cdef int stash_exception(exc_info=None):
-    
+
     global _err_count
 
     existing = getattr(_local, 'exc_info', None)
@@ -63,7 +63,7 @@ cdef int stash_exception(exc_info=None):
 cdef int _last_log_count = 0
 
 cdef int err_check(int res=0, str filename=None) except -1:
-    
+
     global _err_count
     global _last_log_count
 
@@ -113,7 +113,7 @@ cdef int err_check(int res=0, str filename=None) except -1:
 
 
 cdef dict avdict_to_dict(lib.AVDictionary *input):
-    
+
     cdef lib.AVDictionaryEntry *element = NULL
     cdef dict output = {}
     while True:
@@ -127,7 +127,7 @@ cdef dict avdict_to_dict(lib.AVDictionary *input):
 cdef dict_to_avdict(lib.AVDictionary **dst, dict src, bint clear=True):
     if clear:
         lib.av_dict_free(dst)
-    for key, value in src.iteritems():
+    for key, value in src.items():
         err_check(lib.av_dict_set(dst, key, value, 0))
 
 
@@ -135,7 +135,7 @@ cdef dict_to_avdict(lib.AVDictionary **dst, dict src, bint clear=True):
 # === FRACTIONS ===
 # =================
 
-cdef object avrational_to_faction(lib.AVRational *input):
+cdef object avrational_to_fraction(lib.AVRational *input):
     if input.num and input.den:
         return Fraction(input.num, input.den)
 
@@ -146,7 +146,7 @@ cdef object to_avrational(object value, lib.AVRational *input):
         input.num = 0
         input.den = 1
         return
-    
+
     if isinstance(value, Fraction):
         frac = value
     else:
@@ -168,7 +168,7 @@ cdef str media_type_to_string(lib.AVMediaType media_type):
 
     # There is a convenient lib.av_get_media_type_string(x), but it
     # doesn't exist in libav.
-            
+
     if media_type == lib.AVMEDIA_TYPE_VIDEO:
         return "video"
     elif media_type == lib.AVMEDIA_TYPE_AUDIO:

@@ -2,9 +2,8 @@ import collections
 
 from av.utils cimport err_check
 
-
 cdef class _Dictionary(object):
-    
+
     def __cinit__(self, *args, **kwargs):
         for arg in args:
             self.update(arg)
@@ -50,7 +49,6 @@ cdef class _Dictionary(object):
 
 class Dictionary(_Dictionary, collections.MutableMapping):
     pass
-
 
 cdef _Dictionary wrap_dictionary(lib.AVDictionary *input_):
     cdef _Dictionary output = Dictionary()

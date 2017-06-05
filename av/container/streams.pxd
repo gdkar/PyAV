@@ -1,3 +1,4 @@
+cimport libav as lib
 from av.stream cimport Stream
 
 
