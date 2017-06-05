@@ -31,7 +31,6 @@ cdef class OutputContainer(Container):
         :returns: The new :class:`~av.stream.Stream`.
 
         """
-
         if (codec_name is None and template is None) or (codec_name is not None and template is not None):
             raise ValueError('needs one of codec_name or template')
 
@@ -60,7 +59,6 @@ cdef class OutputContainer(Container):
             lib.FF_COMPLIANCE_NORMAL,
         ):
             raise ValueError("%r format does not support %r codec" % (self.format.name, codec_name))
-
         # Create new stream in the AVFormatContext, set AVCodecContext values.
         # As of last check, avformat_new_stream only calls avcodec_alloc_context3 to create
         # the context, but doesn't modify it in any other way. Ergo, we can allow CodecContext
@@ -68,8 +66,10 @@ cdef class OutputContainer(Container):
         lib.avformat_new_stream(self.proxy.ptr, codec)
         cdef lib.AVStream *stream = self.proxy.ptr.streams[self.proxy.ptr.nb_streams - 1]
         cdef lib.AVCodecParameters *codecpar = stream.codecpar
+        if codecpar == NULL:
+            codecpar = stream.codecpar = lib.avcodec_parameters_alloc()
         cdef lib.AVCodecContext *codec_context = stream.codec # For readibility.
-#        lib.avcodec_get_context_defaults3(stream.codec, codec)
+        lib.avcodec_get_context_defaults3(stream.codec, codec)
 #        lib.avcodec_parameters_from_context(codecpar, codec)
 #        stream.codecpar.codec = codec # Still have to manually set this though...
         # Construct the user-land stream so we have access to CodecContext.
@@ -78,21 +78,23 @@ cdef class OutputContainer(Container):
 
         # Copy from the template.
         if template is not None:
-            lib.avcodec_parameters_from_context(codecpar, template._codec_context)
-            codecpar[0].codec_tag = 0
+            if template._codec_context != NULL and stream.codecpar != NULL:
+                lib.avcodec_parameters_from_context(codecpar, template._codec_context)
+                lib.avcodec_parameters_to_context  (codec_context, codecpar)
+                codecpar[0].codec_tag = 0
 
-#            lib.avcodec_copy_context(codec_context, template._codec_context)
+#Q            lib.avcodec_copy_context(codec_context, template._codec_context)
             # Reset the codec tag assuming we are remuxing.
-#            codec_context.codec_tag = 0
+            codec_context.codec_tag = 0
 
         # Now lets set some more sane video defaults
         elif codec.type == lib.AVMEDIA_TYPE_VIDEO:
-            codecpar[0].pix_fmt = lib.AV_PIX_FMT_YUV420P
-            codecpar[0].width = 640
-            codecpar[0].height = 480
-            codecpar[0].bit_rate = 1024000
-#            codec_context.bit_rate_tolerance = 128000
-            #codec_context.ticks_per_frame = 1
+            codec_context.pix_fmt = lib.AV_PIX_FMT_YUV420P
+            codec_context.width = 640
+            codec_context.height = 480
+            codec_context.bit_rate = 1024000
+            codec_context.bit_rate_tolerance = 128000
+            codec_context.ticks_per_frame = 1
 
             rate = Fraction(rate or 24)
 
@@ -103,12 +105,12 @@ cdef class OutputContainer(Container):
 
         # Some sane audio defaults
         elif codec.type == lib.AVMEDIA_TYPE_AUDIO:
-            codecpar[0].sample_fmt = codec.sample_fmts[0]
-            codecpar[0].bit_rate = 128000
-#            codec_context.bit_rate_tolerance = 32000
-            codecpar[0].sample_rate = rate or 48000
-            codecpar[0].channels = 2
-            codecpar[0].channel_layout = lib.AV_CH_LAYOUT_STEREO
+            codec_context.sample_fmt = codec.sample_fmts[0]
+            codec_context.bit_rate = 128000
+            codec_context.bit_rate_tolerance = 32000
+            codec_context.sample_rate = rate or 48000
+            codec_context.channels = 2
+            codec_context.channel_layout = lib.AV_CH_LAYOUT_STEREO
 
         # Some formats want stream headers to be separate
         if self.proxy.ptr.oformat.flags & lib.AVFMT_GLOBALHEADER:
@@ -121,12 +123,10 @@ cdef class OutputContainer(Container):
 
         if self._started:
             return
-
         cdef set used_options = set()
         # Finalize and open all streams.
         cdef Stream stream
         for stream in self.streams:
-
             ctx = stream.codec_context
             if not ctx.is_open:
                 ctx.options.update(self.options)
@@ -173,7 +173,6 @@ cdef class OutputContainer(Container):
             if strict:
                 raise ValueError("Encoding hasn't started.")
             return
-
         self.proxy.err_check(lib.av_write_trailer(self.proxy.ptr))
         cdef Stream stream
         for stream in self.streams:
@@ -181,7 +180,6 @@ cdef class OutputContainer(Container):
 
         if self.file is None and not self.proxy.ptr.oformat.flags & lib.AVFMT_NOFILE:
             lib.avio_closep(&self.proxy.ptr.pb)
-
         self._done = True
 
     def mux(self, packets):

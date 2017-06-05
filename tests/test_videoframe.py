@@ -1,6 +1,5 @@
 from .common import *
 
-
 class TestVideoFrameConstructors(TestCase):
 
     def test_null_constructor(self):
@@ -85,7 +84,10 @@ class TestVideoFrameTransforms(TestCase):
     def setUp(self):
         if not Image:
             raise SkipTest()
-        self.image = Image.open(fate_png())
+        with open(fate_png(),'rb') as image:
+            self.image = Image.open(image)
+            self.image.load()
+#        self.image = Image.open(fate_png())
         self.width, self.height = self.image.size
 
     def test_roundtrip_low_api(self):
@@ -123,5 +125,3 @@ class TestVideoFrameTiming(TestCase):
         frame = frame.reformat(320, 240)
         self.assertEqual(frame.pts, 123)
         self.assertEqual(frame.time_base, 456)
-
-

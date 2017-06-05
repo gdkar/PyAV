@@ -12,7 +12,6 @@ cdef class AudioResampler(object):
     cdef readonly bint is_passthrough
 
     cdef lib.SwrContext *ptr
-
     cdef AudioFrame template
 
     # Source descriptors; not for public consumption.

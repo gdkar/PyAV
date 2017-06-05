@@ -17,7 +17,7 @@ HEIGHT = 540
 class PlayerGLWidget(Q.GLWidget):
 
     def initializeGL(self):
-        print 'initialize GL'
+        print ('initialize GL')
         gl.clearColor(0, 0, 0, 0)
 
         gl.enable(gl.TEXTURE_2D)
@@ -28,13 +28,13 @@ class PlayerGLWidget(Q.GLWidget):
         gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
         gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-        print 'texture id', self.tex_id
+        print ('texture id', self.tex_id)
 
     def setImage(self, w, h, img):
         gl.texImage2D(gl.TEXTURE_2D, 0, 3, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, img)
 
     def resizeGL(self, w, h):
-        print 'resize to', w, h
+        print ('resize to', w, h)
         gl.viewport(0, 0, w, h)
         # gl.matrixMode(gl.PROJECTION)
         # gl.loadIdentity()
@@ -60,7 +60,7 @@ args = parser.parse_args()
 
 def _iter_images():
     video = av.open(args.path, format=args.format)
-    stream = next(s for s in video.streams if s.type == b'video')
+    stream = next(s for s in video.streams if s.type == 'video')
     for packet in video.demux(stream):
         for frame in packet.decode():
             yield frame.reformat(frame.width, frame.height, 'rgb24')
@@ -93,7 +93,7 @@ def on_timeout(*args):
 
     count += 1
     elapsed = time.time() - start_time
-    print frame.pts, frame.dts, '%.2ffps' % (count / elapsed)
+    print (frame.pts, frame.dts, '%.2ffps' % (count / elapsed))
 
 timer.start()
 

@@ -15,9 +15,7 @@ cdef VideoFrame alloc_video_frame():
     """
     return VideoFrame.__new__(VideoFrame, _cinit_bypass_sentinel)
 
-
 cdef class VideoFrame(Frame):
-
     """A frame of video.
 
     >>> frame = VideoFrame(1920, 1080, 'rgb24')

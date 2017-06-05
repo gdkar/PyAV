@@ -46,7 +46,7 @@ cdef class StreamContainer(object):
         elif streams is not None:
             raise TypeError('streams must be Stream or tuple')
 
-        for type_, indices in typed.iteritems():
+        for type_, indices in typed.items():
             streams = getattr(self, type_)
             if not isinstance(indices, (tuple, list)):
                 indices = [indices]

@@ -57,7 +57,6 @@ cdef class VideoCodecContext(CodecContext):
             vframe.ptr.pts = <int64_t>self.encoded_frame_count
 
         self.encoded_frame_count += 1
-
         return [vframe]
 
     cdef _encode(self, Frame frame):
@@ -71,8 +70,6 @@ cdef class VideoCodecContext(CodecContext):
         """
 
         cdef VideoFrame vframe = frame
-
-
         cdef Packet packet = Packet()
         cdef int got_packet
 
@@ -100,9 +97,7 @@ cdef class VideoCodecContext(CodecContext):
 
         # Decode video into the frame.
         cdef int completed_frame = 0
-
         cdef int result
-
         with nogil:
             result = lib.avcodec_decode_video2(self.ptr, self.next_frame.ptr, &completed_frame, packet)
         data_consumed[0] = err_check(result)

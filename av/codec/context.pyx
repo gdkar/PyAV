@@ -140,7 +140,6 @@ cdef class CodecContext(object):
         cdef size_t new_buffer_size
         cdef unsigned char *c_input
         if input_ is not None:
-
             # Make sure we have enough buffer.
             new_buffer_size = self.parse_buffer_size + len(input_)
             if new_buffer_size > self.parse_buffer_max_size:
@@ -169,7 +168,6 @@ cdef class CodecContext(object):
                     self.parse_pos
                 )
             err_check(used)
-
             if packet.ptr.size:
                 packets.append(packet)
             if used:
@@ -178,20 +176,16 @@ cdef class CodecContext(object):
 
             if not (used or packet.ptr.size):
                 break
-
         if base:
             # Shuffle the buffer.
             memcpy(self.parse_buffer, self.parse_buffer + base, base)
             self.parse_buffer_size -= base
-
         return packets
 
     cdef _send_frame_and_recv(self, Frame frame):
 
         cdef Packet packet
-
         err_check(lib.avcodec_send_frame(self.ptr, frame.ptr if frame else NULL))
-
         res = []
         while True:
             packet = self._recv_packet()
@@ -204,10 +198,8 @@ cdef class CodecContext(object):
     cdef _send_packet_and_recv(self, Packet packet):
 
         cdef Frame frame
-
         cdef lib.AVPacket *packet_ptr = packet.ptr if packet else NULL
         err_check(lib.avcodec_send_packet(self.ptr, packet_ptr))
-
         res = []
         while True:
             frame = self._recv_frame()
@@ -216,7 +208,6 @@ cdef class CodecContext(object):
             else:
                 break
         return res
-
     cdef _prepare_frames_for_encode(self, Frame frame):
         return [frame]
 
@@ -224,23 +215,23 @@ cdef class CodecContext(object):
         raise NotImplementedError('Base CodecContext cannot decode.')
 
     cdef _recv_frame(self):
-
         if not self._next_frame:
             self._next_frame = self._alloc_next_frame()
         cdef Frame frame = self._next_frame
-
-        cdef int res = lib.avcodec_receive_frame(self.ptr, frame.ptr)
+        cdef lib.AVFrame *fptr = frame.ptr
+        cdef lib.AVCodecContext *cptr = self.ptr
+        cdef int res = 0
+        with nogil:
+            res = lib.avcodec_receive_frame(cptr, fptr)
         if res == -EAGAIN or res == lib.AVERROR_EOF:
             return
         err_check(res)
-
         if not res:
             self._next_frame = None
             self._setup_decoded_frame(frame)
             return frame
 
     cdef _recv_packet(self):
-
         cdef Packet packet = Packet()
         cdef int res = lib.avcodec_receive_packet(self.ptr, packet.ptr)
         if res == -EAGAIN or res == lib.AVERROR_EOF:
@@ -314,13 +305,11 @@ cdef class CodecContext(object):
         (if they are encoded with a codec that has B-frames).
 
         """
-
         if not self.codec.ptr:
             raise ValueError('cannot decode unknown codec')
 
         self.open(strict=False)
-        if (
-            prefer_send_recv and
+        if ( True and
             #lib.PYAV_HAVE_AVCODEC_SEND_PACKET and
             (
                 self.ptr.codec_type == lib.AVMEDIA_TYPE_VIDEO or
@@ -332,7 +321,6 @@ cdef class CodecContext(object):
                 self._setup_decoded_frame(frame)
                 res.append(frame)
             return res
-
         if packet is None:
             packet = Packet() # Makes our control flow easier.
 
@@ -375,9 +363,7 @@ cdef class CodecContext(object):
         packet.ptr.size = original_size
 
         return decoded_objs
-
     cdef _setup_decoded_frame(self, Frame frame):
-
         # In FFMpeg <= 3.0, and all LibAV we know of, the frame's pts may be
         # unset at this stage, and he PTS from a packet is the correct one while
         # decoding, and it is copied to pkt_pts during creation of a frame.
@@ -395,9 +381,7 @@ cdef class CodecContext(object):
             # This is a bad assumption to make, as it seems like AVCodecContext
             # barely cares about timing information.
             frame._time_base = self.ptr.time_base
-
         frame.index = self.ptr.frame_number - 1
-
     cdef _decode(self, lib.AVPacket *packet, int *data_consumed):
         raise NotImplementedError('Base CodecContext cannot decode packets.')
 
