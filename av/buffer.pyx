@@ -44,6 +44,7 @@ cdef class Buffer(_Buffer):
     @property
     def buffer_size(self):
         return self._buffer_size()
+
     @property
     def buffer_ptr(self):
         return <size_t>self._buffer_ptr()

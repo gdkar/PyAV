@@ -134,6 +134,7 @@ cdef class Stream(object):
     @property
     def id(self):
         return self._stream.id
+
     @id.setter
     def id(self, v):
         if v is None:

@@ -198,18 +198,19 @@ cdef class VideoFrame(Frame):
             )
 
         return frame
-
-    property width:
+    @property
+    def width(self):
         """Width of the image, in pixels."""
-        def __get__(self): return self.ptr.width
-
-    property height:
+        return self.ptr.width
+    @property
+    def height(self):
         """Height of the image, in pixels."""
-        def __get__(self): return self.ptr.height
+        return self.ptr.height
 
-    property key_frame:
+    @property
+    def key_frame(self):
         """Is this frame a key frame?"""
-        def __get__(self): return self.ptr.key_frame
+        return self.ptr.key_frame
 
     def to_rgb(self, **kwargs):
         """Get an RGB version of this frame.
@@ -260,7 +261,7 @@ cdef class VideoFrame(Frame):
         """Get an RGB ``QImage`` of this frame.
 
         Any ``**kwargs`` are passed to :meth:`VideoFrame.reformat`.
-        
+
         Returns a ``(VideoFrame, QImage)`` tuple, where the ``QImage`` references
         the data in the ``VideoFrame``.
         """

@@ -1,6 +1,5 @@
 cimport libav as lib
 
-
 cdef class Filter(object):
 
     cdef lib.AVFilter *ptr

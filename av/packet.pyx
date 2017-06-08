@@ -4,7 +4,6 @@ from av.bytesource cimport bytesource
 from av.utils cimport avrational_to_fraction, to_avrational, err_check
 
 cdef class Packet(Buffer):
-
     """A packet of encoded data within a :class:`~av.format.Stream`.
 
     This may, or may not include a complete object within a stream.
@@ -65,20 +64,23 @@ cdef class Packet(Buffer):
     #    return self.source is None
 
     def unref(self):
+        cdef lib.AVPacket *dst = self.ptr
         with nogil:
-            lib.av_packet_unref(self.ptr)
+            if dst:
+                lib.av_packet_unref(dst)
 
     def ref(self, Packet other):
-        cdef int err
-        cdef lib.AVPacket *src
-        cdef lib.AVPacket *dst
-        with nogil:
-            lib.av_packet_unref(self.ptr)
+        cdef int err = 0
+        cdef lib.AVPacket *src = NULL
+        cdef lib.AVPacket *dst = self.ptr
         if other is not None:
             src = other.ptr
-            dst = self.ptr
+
+        if dst != src:
             with nogil:
-                err = lib.av_packet_ref(dst, src)
+                lib.av_packet_unref(dst)
+                if src:
+                    err = lib.av_packet_ref(dst,src)
             err_check(err)
 
     def copy(self):

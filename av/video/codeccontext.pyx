@@ -132,83 +132,94 @@ cdef class VideoCodecContext(CodecContext):
         else:
             self._format = None
 
-    property format:
-        def __get__(self):
-            return self._format
-        def __set__(self, VideoFormat format):
-            self.ptr.pix_fmt = format.pix_fmt
-            self.ptr.width = format.width
-            self.ptr.height = format.height
-            self._build_format() # Kinda wasteful.
+    @property
+    def format(self):
+        return self._format
+    @format.setter
+    def format(self, VideoFormat format):
+        self.ptr.pix_fmt = format.pix_fmt
+        self.ptr.width = format.width
+        self.ptr.height = format.height
+        self._build_format() # Kinda wasteful.
 
-    property width:
-        def __get__(self):
-            return self.ptr.width if self.ptr else None
-        def __set__(self, unsigned int value):
-            self.ptr.width = value
-            self._build_format()
+    @property
+    def width(self):
+        return self.ptr.width if self.ptr else None
 
-    property height:
-        def __get__(self):
-            return self.ptr.height if self.ptr else None
-        def __set__(self, unsigned int value):
-            self.ptr.height = value
-            self._build_format()
+    @width.setter
+    def width(self, unsigned int value):
+        self.ptr.width = value
+        self._build_format()
+
+    @property
+    def height(self):
+        return self.ptr.height if self.ptr else None
+    @height.setter
+    def height(self, unsigned int value):
+        self.ptr.height = value
+        self._build_format()
 
     # TODO: Replace with `format`.
-    property pix_fmt:
-        def __get__(self):
-            return self._format.name
-        def __set__(self, value):
-            self.ptr.pix_fmt = lib.av_get_pix_fmt(value)
-            self._build_format()
+    @property
+    def pix_fmt(self):
+        return self._format.name
+    @pix_fmt.setter
+    def pix_fmt(self, value):
+        self.ptr.pix_fmt = lib.av_get_pix_fmt(value)
+        self._build_format()
 
-    property framerate:
-        def __get__(self):
-            return avrational_to_fraction(&self.ptr.framerate)
-        def __set__(self, value):
-            to_avrational(value, &self.ptr.framerate)
+    @property
+    def framerate(self):
+        return avrational_to_fraction(&self.ptr.framerate)
+    @framerate.setter
+    def framerate(self, value):
+        to_avrational(value, &self.ptr.framerate)
 
-    property rate:
+    @property
+    def rate(self):
         """Another name for :attr:`framerate`."""
-        def __get__(self):
-            return self.framerate
-        def __set__(self, value):
-            self.framerate = value
+        return self.framerate
+    @rate.setter
+    def rate(self,value):
+        """Another name for :attr:`framerate`."""
+        self.framerate = value
 
-    property gop_size:
-        def __get__(self):
-            return self.ptr.gop_size if self.ptr else None
-        def __set__(self, int value):
-            self.ptr.gop_size = value
+    @property
+    def gop_size(self):
+        return self.ptr.gop_size if self.ptr else None
+    @gop_size.setter
+    def gop_size(self, int value):
+        self.ptr.gop_size = value
 
-    property sample_aspect_ratio:
-        def __get__(self):
-            return avrational_to_fraction(&self.ptr.sample_aspect_ratio) if self.ptr else None
-        def __set__(self, value):
-            to_avrational(value, &self.ptr.sample_aspect_ratio)
+    @property
+    def sample_aspect_ratio(self):
+        return avrational_to_fraction(&self.ptr.sample_aspect_ratio) if self.ptr else None
 
-    property display_aspect_ratio:
-        def __get__(self):
-            cdef lib.AVRational dar
+    @sample_aspect_ratio.setter
+    def sample_aspect_ratio(self, value):
+        to_avrational(value, &self.ptr.sample_aspect_ratio)
 
-            lib.av_reduce(
-                &dar.num, &dar.den,
-                self.ptr.width * self.ptr.sample_aspect_ratio.num,
-                self.ptr.height * self.ptr.sample_aspect_ratio.den, 1024*1024)
+    @property
+    def display_aspect_ratio(self):
+        cdef lib.AVRational dar
 
-            return avrational_to_fraction(&dar)
+        lib.av_reduce(
+            &dar.num, &dar.den,
+            self.ptr.width * self.ptr.sample_aspect_ratio.num,
+            self.ptr.height * self.ptr.sample_aspect_ratio.den, 1024*1024)
 
-    property has_b_frames:
-        def __get__(self):
-            if self.ptr.has_b_frames:
-                return True
-            return False
+        return avrational_to_fraction(&dar)
 
-    property coded_width:
-        def __get__(self):
-            return self.ptr.coded_width if self.ptr else None
+    @property
+    def has_b_frames(self):
+        if self.ptr.has_b_frames:
+            return True
+        return False
 
-    property coded_height:
-        def __get__(self):
-            return self.ptr.coded_height if self.ptr else None
+    @property
+    def coded_width(self):
+        return self.ptr.coded_width if self.ptr else None
+
+    @property
+    def coded_height(self):
+        return self.ptr.coded_height if self.ptr else None
