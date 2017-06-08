@@ -66,7 +66,6 @@ cdef dict channel_descriptions = {
 
 cdef class AudioLayout(object):
     def __init__(self, layout):
-
         if layout is _cinit_bypass_sentinel:
             return
         cdef uint64_t c_layout
@@ -101,6 +100,7 @@ cdef class AudioLayout(object):
 
     def __repr__(self):
         return '<av.%s %r>' % (self.__class__.__name__, self.name)
+
     @property
     def name(self):
         """The canonical name of the audio layout."""
@@ -110,7 +110,6 @@ cdef class AudioLayout(object):
         return <str>out
 
 cdef class AudioChannel(object):
-
     def __cinit__(self, AudioLayout layout, int index):
         self.channel = lib.av_channel_layout_extract_channel(layout.layout, index)
     def __repr__(self):

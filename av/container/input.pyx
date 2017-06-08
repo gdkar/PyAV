@@ -91,7 +91,6 @@ cdef class InputContainer(Container):
         cdef int ret
 
         try:
-
             for i in range(self.proxy.ptr.nb_streams):
                 include_stream[i] = False
             for stream in streams:

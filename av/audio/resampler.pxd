@@ -1,4 +1,4 @@
-from libc.stdint cimport uint64_t
+from libc.stdint cimport uint64_t, int64_t
 
 cimport libav as lib
 
@@ -23,9 +23,9 @@ cdef class AudioResampler(object):
     cdef readonly unsigned int rate
 
     # Retiming.
-    cdef readonly uint64_t samples_in
-    cdef readonly double pts_per_sample_in
-    cdef readonly uint64_t samples_out
-    cdef readonly bint simple_pts_out
+    cdef readonly int64_t  samples_in
+    cdef readonly double   pts_per_sample_in
+    cdef readonly int64_t  samples_out
+    cdef readonly bint     simple_pts_out
 
     cpdef resample(self, AudioFrame)

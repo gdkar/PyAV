@@ -1,4 +1,4 @@
-from libc.stdint cimport uint64_t
+from libc.stdint cimport uint64_t,int64_t
 
 cimport libav as lib
 
@@ -21,13 +21,13 @@ cdef class AudioResampler(object):
 
 
     """
-
     def __cinit__(self, format=None, layout=None, rate=None):
         if format is not None:
             self.format = format if isinstance(format, AudioFormat) else AudioFormat(format)
         if layout is not None:
             self.layout = layout if isinstance(layout, AudioLayout) else AudioLayout(layout)
         self.rate = int(rate) if rate else 0
+        self.samples_in = lib.AV_NOPTS_VALUE
 
     def __dealloc__(self):
         if self.ptr:
@@ -52,7 +52,6 @@ cdef class AudioResampler(object):
 
         # Take source settings from the first frame.
         if not self.ptr:
-
             if not frame:
                 raise ValueError('Cannot flush AudioResampler before it is used.')
 
@@ -104,7 +103,6 @@ cdef class AudioResampler(object):
                 raise
 
         elif frame:
-
             # Assert the settings are the same on consecutive frames.
             if (
                 frame.ptr.format         != self.template.format.sample_fmt or
@@ -114,12 +112,16 @@ cdef class AudioResampler(object):
                 raise ValueError('Frame does not match AudioResampler setup.')
 
         # Assert that the PTS are what we expect.
-        cdef uint64_t expected_pts
-        if frame is not None and frame.ptr.pts != lib.AV_NOPTS_VALUE:
-            expected_pts = <uint64_t>(self.pts_per_sample_in * self.samples_in)
-            if frame.ptr.pts != expected_pts:
-                raise ValueError('Input frame pts %d != expected %d; fix or set to None.' % (frame.ptr.pts, expected_pts))
-            self.samples_in += frame.ptr.nb_samples
+        cdef int64_t expected_pts
+        if frame is not None:
+            if frame.ptr.pts != lib.AV_NOPTS_VALUE:
+                if self.samples_in == lib.AV_NOPTS_VALUE:
+                    self.samples_in = <int64_t>(frame.ptr.pts / self.pts_per_sample_in)
+                expected_pts = <int64_t>(self.pts_per_sample_in * self.samples_in)
+                if frame.ptr.pts != expected_pts:
+                    raise ValueError('Input frame pts {} != expected {}; fix or set to None.'.format(frame.ptr.pts, expected_pts))
+            if self.samples_in != lib.AV_NOPTS_VALUE:
+                self.samples_in += frame.ptr.nb_samples
 
         # The example "loop" as given in the FFmpeg documentation looks like:
         # uint8_t **input;

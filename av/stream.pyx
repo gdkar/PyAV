@@ -19,10 +19,8 @@ cdef Stream wrap_stream(Container container, lib.AVStream *c_stream):
     called.
 
     """
-
     # This better be the right one...
     assert container.proxy.ptr.streams[c_stream.index] == c_stream
-
     cdef Stream py_stream
 
     if c_stream.codec.codec_type == lib.AVMEDIA_TYPE_VIDEO:
@@ -54,9 +52,7 @@ cdef class Stream(object):
         self._stream = stream
 
         self._codec_context = stream.codec
-
         self.metadata = avdict_to_dict(stream.metadata)
-
         # This is an input container!
         if self._container.ptr.iformat:
 

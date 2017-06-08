@@ -11,7 +11,7 @@ from av.dictionary cimport _Dictionary
 from av.dictionary import Dictionary
 from av.packet cimport Packet
 from av.utils cimport err_check, avdict_to_dict, avrational_to_fraction, to_avrational, media_type_to_string
-
+from fractions import Fraction
 cdef object _cinit_sentinel = object()
 
 cdef CodecContext wrap_codec_context(lib.AVCodecContext *c_ctx, lib.AVCodec *c_codec, ContainerProxy container):
@@ -57,7 +57,6 @@ cdef class CodecContext(object):
 
         # Signal that we want to reference count.
         self.ptr.refcounted_frames = 1
-
         self.stream_index = -1
 
     @property
@@ -96,12 +95,10 @@ cdef class CodecContext(object):
             self._set_default_time_base()
 
         err_check(lib.avcodec_open2(self.ptr, self.codec.ptr, &options.ptr))
-
         self.options = dict(options)
 
     cdef _set_default_time_base(self):
-        self.ptr.time_base.num = 1
-        self.ptr.time_base.den = lib.AV_TIME_BASE
+        self.ptr.time_base = lib.AV_TIME_BASE_Q
 
     cpdef close(self, bint strict=True):
         if not lib.avcodec_is_open(self.ptr):
@@ -196,18 +193,31 @@ cdef class CodecContext(object):
         return res
 
     cdef _send_packet_and_recv(self, Packet packet):
+        _tb = None
 
-        cdef Frame frame
+        if packet and packet.time_base.denominator:
+            _tb = packet.time_base
+
         cdef lib.AVPacket *packet_ptr = packet.ptr if packet else NULL
-        err_check(lib.avcodec_send_packet(self.ptr, packet_ptr))
+        cdef int err = 0
+        cdef lib.AVCodecContext *ctx = self.ptr
+        with nogil:
+            err = lib.avcodec_send_packet(ctx, packet_ptr)
+        err_check(err)
         res = []
+        cdef Frame frame
         while True:
+            if not self._next_frame:
+                self._next_frame = self._alloc_next_frame()
+                if _tb is not None:
+                    self._next_frame.time_base = _tb
             frame = self._recv_frame()
             if frame:
                 res.append(frame)
             else:
                 break
         return res
+
     cdef _prepare_frames_for_encode(self, Frame frame):
         return [frame]
 
@@ -233,6 +243,7 @@ cdef class CodecContext(object):
 
     cdef _recv_packet(self):
         cdef Packet packet = Packet()
+
         cdef int res = lib.avcodec_receive_packet(self.ptr, packet.ptr)
         if res == -EAGAIN or res == lib.AVERROR_EOF:
             return
@@ -246,7 +257,6 @@ cdef class CodecContext(object):
         """Encode a list of :class:`.Packet` from the given :class:`.Frame`."""
 
         self.open(strict=False)
-
         cdef bint is_flushing = frame is None
         frames = self._prepare_frames_for_encode(frame)
 
