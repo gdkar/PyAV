@@ -10,6 +10,7 @@ include "libavutil/avutil.pxd"
 include "libavutil/channel_layout.pxd"
 include "libavutil/dict.pxd"
 include "libavutil/frame.pxd"
+include "libavutil/buffer.pxd"
 include "libavutil/samplefmt.pxd"
 
 include "libavcodec/avcodec.pxd"

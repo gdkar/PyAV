@@ -112,7 +112,7 @@ cdef class AudioStream(Stream):
 
         err_check(lib.avcodec_encode_audio2(
             self._codec_context,
-            &packet.struct,
+            packet.ptr,
             fifo_frame.ptr if fifo_frame is not None else NULL,
             &got_packet,
         ))
@@ -121,21 +121,21 @@ cdef class AudioStream(Stream):
 
         # Rescale some times which are in the codec's time_base to the
         # stream's time_base.
-        if packet.struct.pts != lib.AV_NOPTS_VALUE:
-            packet.struct.pts = lib.av_rescale_q(
-                packet.struct.pts,
+        if packet.ptr.pts != lib.AV_NOPTS_VALUE:
+            packet.ptr.pts = lib.av_rescale_q(
+                packet.ptr.pts,
                 self._codec_context.time_base,
                 self._stream.time_base
             )
-        if packet.struct.dts != lib.AV_NOPTS_VALUE:
-            packet.struct.dts = lib.av_rescale_q(
-                packet.struct.dts,
+        if packet.ptr.dts != lib.AV_NOPTS_VALUE:
+            packet.ptr.dts = lib.av_rescale_q(
+                packet.ptr.dts,
                 self._codec_context.time_base,
                 self._stream.time_base
             )
-        if packet.struct.duration > 0:
-            packet.struct.duration = lib.av_rescale_q(
-                packet.struct.duration,
+        if packet.ptr.duration > 0:
+            packet.ptr.duration = lib.av_rescale_q(
+                packet.ptr.duration,
                 self._codec_context.time_base,
                 self._stream.time_base
             )
@@ -144,9 +144,9 @@ cdef class AudioStream(Stream):
         # sense for audio?
         if self._codec_context.coded_frame:
             if self._codec_context.coded_frame.key_frame:
-                packet.struct.flags |= lib.AV_PKT_FLAG_KEY
+                packet.ptr.flags |= lib.AV_PKT_FLAG_KEY
 
-        packet.struct.stream_index = self._stream.index
+        packet.ptr.stream_index = self._stream.index
         packet.stream = self
 
         return packet

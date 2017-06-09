@@ -199,7 +199,7 @@ cdef class OutputContainer(Container):
 
     def mux(self, Packet packet not None):
         self.start_encoding()
-        self.proxy.err_check(lib.av_interleaved_write_frame(self.proxy.ptr, &packet.struct))
+        self.proxy.err_check(lib.av_interleaved_write_frame(self.proxy.ptr, packet.ptr))
 
 
 

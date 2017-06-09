@@ -189,19 +189,19 @@ cdef class Stream(object):
         cdef int data_consumed = 0
         cdef list decoded_objs = []
 
-        cdef uint8_t *original_data = packet.struct.data
-        cdef int      original_size = packet.struct.size
+        cdef uint8_t *original_data = packet.ptr.data
+        cdef int      original_size = packet.ptr.size
 
-        cdef bint is_flushing = not (packet.struct.data and packet.struct.size)
+        cdef bint is_flushing = not (packet.ptr.data and packet.ptr.size)
 
         # Keep decoding while there is data.
-        while is_flushing or packet.struct.size > 0:
+        while is_flushing or packet.ptr.size > 0:
             if is_flushing:
-                packet.struct.data = NULL
-                packet.struct.size = 0
-            decoded = self._decode_one(&packet.struct, &data_consumed)
-            packet.struct.data += data_consumed
-            packet.struct.size -= data_consumed
+                packet.ptr.data = NULL
+                packet.ptr.size = 0
+            decoded = self._decode_one(packet.ptr, &data_consumed)
+            packet.ptr.data += data_consumed
+            packet.ptr.size -= data_consumed
             if decoded:
                 if isinstance(decoded, Frame): self._setup_frame(decoded)
                 decoded_objs.append(decoded)
@@ -216,8 +216,8 @@ cdef class Stream(object):
             # frames, e.g. during flushing.)
             elif not data_consumed: break
         # Restore the packet.
-        packet.struct.data = original_data
-        packet.struct.size = original_size
+        packet.ptr.data = original_data
+        packet.ptr.size = original_size
         return decoded_objs
 
     def seek(self, timestamp, mode='time', backward=True, any_frame=False):

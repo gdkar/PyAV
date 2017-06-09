@@ -116,7 +116,10 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         AV_PKT_DATA_METADATA_UPDATE
         AV_PKT_DATA_MPEGTS_STREAM_ID
         AV_PKT_DATA_MASTERING_DISPLAY_METADATA
-
+    ctypedef struct AVPacketSideData:
+        uint8_t *data
+        int size
+        AVPacketSideDataType type
     cdef AVCodec* av_codec_next(AVCodec*)
     cdef int av_codec_is_encoder(AVCodec*)
     cdef int av_codec_is_decoder(AVCodec*)
@@ -283,15 +286,18 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
     )
 
     cdef struct AVPacket:
+        AVBufferRef *buf
         int64_t pts
         int64_t dts
         uint8_t *data
         int size
         int stream_index
         int flags
-        int duration
-        void (*destruct)(AVPacket*)
+        AVPacketSideData *side_data
+        int side_data_elems
+        int64_t duration
         int64_t pos
+        void (*destruct)(AVPacket*)
         int64_t convergence_duration
     cdef struct MpegEncContext:
         pass

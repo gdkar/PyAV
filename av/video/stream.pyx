@@ -97,8 +97,8 @@ cdef class VideoStream(Stream):
             # Flushing
             formated_frame = None
         packet = Packet()
-        packet.struct.data = NULL #packet data will be allocated by the encoder
-        packet.struct.size = 0
+        packet.ptr.data = NULL #packet data will be allocated by the encoder
+        packet.ptr.size = 0
         if formated_frame:
             # It has a pts, so adjust it.
             if formated_frame.ptr.pts != lib.AV_NOPTS_VALUE:
@@ -110,27 +110,27 @@ cdef class VideoStream(Stream):
             # There is no pts, so create one.
             else:formated_frame.ptr.pts = <int64_t>self.encoded_frame_count
             self.encoded_frame_count += 1
-            ret = err_check(lib.avcodec_encode_video2(self._codec_context, &packet.struct, formated_frame.ptr, &got_output))
+            ret = err_check(lib.avcodec_encode_video2(self._codec_context, packet.ptr, formated_frame.ptr, &got_output))
         else:
             # Flushing
-            ret = err_check(lib.avcodec_encode_video2(self._codec_context, &packet.struct, NULL, &got_output))
+            ret = err_check(lib.avcodec_encode_video2(self._codec_context, packet.ptr, NULL, &got_output))
         if got_output:
             # rescale the packet pts and dts, which are in codec time_base, to the streams time_base
-            if packet.struct.pts != lib.AV_NOPTS_VALUE:
-                packet.struct.pts = lib.av_rescale_q(packet.struct.pts,
+            if packet.ptr.pts != lib.AV_NOPTS_VALUE:
+                packet.ptr.pts = lib.av_rescale_q(packet.ptr.pts,
                                                          self._codec_context.time_base,
                                                          self._stream.time_base)
-            if packet.struct.dts != lib.AV_NOPTS_VALUE:
-                packet.struct.dts = lib.av_rescale_q(packet.struct.dts,
+            if packet.ptr.dts != lib.AV_NOPTS_VALUE:
+                packet.ptr.dts = lib.av_rescale_q(packet.ptr.dts,
                                                      self._codec_context.time_base,
                                                      self._stream.time_base)
 
-            if packet.struct.duration != lib.AV_NOPTS_VALUE:
-                packet.struct.duration = lib.av_rescale_q(packet.struct.duration,
+            if packet.ptr.duration != lib.AV_NOPTS_VALUE:
+                packet.ptr.duration = lib.av_rescale_q(packet.ptr.duration,
                                                      self._codec_context.time_base,
                                                      self._stream.time_base)
 
-            packet.struct.stream_index = self._stream.index
+            packet.ptr.stream_index = self._stream.index
             packet.stream = self
 
             return packet

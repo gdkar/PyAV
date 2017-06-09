@@ -1,8 +1,8 @@
 from cpython.buffer cimport Py_buffer
 
 
-cdef class ByteSource(object):
-
+cdef class ByteSource:
+    cdef object __weakref__
     cdef object owner
 
     cdef bint has_view

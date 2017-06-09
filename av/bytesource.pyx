@@ -37,4 +37,3 @@ cdef ByteSource bytesource(obj, bint allow_none=False):
         return obj
     else:
         return ByteSource(obj)
-
