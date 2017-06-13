@@ -3,10 +3,10 @@ from libc.stdint cimport uint64_t
 from av.utils cimport media_type_to_string
 from av.video.format cimport get_video_format
 from av.descriptor cimport wrap_avclass
+import weakref
 
 cdef object _cinit_sentinel = object()
-
-
+cdef object _codec_cache = weakref.WeakValueDictionary()
 cdef flag_in_bitfield(uint64_t bitfield, uint64_t flag):
     # Not every flag exists in every version of FFMpeg and LibAV, so we
     # define them to 0.
@@ -15,7 +15,7 @@ cdef flag_in_bitfield(uint64_t bitfield, uint64_t flag):
     return bool(bitfield & flag)
 
 
-cdef class Codec(object):
+cdef class Codec:
 
     def __cinit__(self, name, mode='r'):
 
@@ -167,7 +167,7 @@ cdef class Codec(object):
         return flag_in_bitfield(self.desc.props, lib.AV_CODEC_PROP_TEXT_SUB)
 
 
-cdef class CodecContext(object):
+cdef class CodecContext:
     def __cinit__(self, x):
         if x is not _cinit_sentinel:
             raise RuntimeError('cannot instantiate CodecContext')

@@ -5,7 +5,7 @@ from cpython cimport PyBuffer_FillInfo
 from av.bytesource cimport ByteSource, bytesource
 
 
-cdef class _Buffer(object):
+cdef class _Buffer:
 
     cdef size_t _buffer_size(self):
         return 0

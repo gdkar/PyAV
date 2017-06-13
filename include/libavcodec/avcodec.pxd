@@ -39,9 +39,10 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
     cdef uint64_t CODEC_CAP_VARIABLE_FRAME_SIZE
     cdef uint64_t CODEC_CAP_INTRA_ONLY
     cdef uint64_t CODEC_CAP_LOSSLESS
-
+    cdef uint64_t CODEC_FLAG_TRUNCATED
     cdef int AV_PKT_FLAG_KEY
-
+    cdef int AV_PKT_FLAG_CORRUPT
+    cdef int AV_PKT_FLAG_TRUNCaTED
     cdef int FF_COMPLIANCE_VERY_STRICT
     cdef int FF_COMPLIANCE_STRICT
     cdef int FF_COMPLIANCE_NORMAL
@@ -116,13 +117,10 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         AV_PKT_DATA_METADATA_UPDATE
         AV_PKT_DATA_MPEGTS_STREAM_ID
         AV_PKT_DATA_MASTERING_DISPLAY_METADATA
-    ctypedef struct AVPacketSideData:
-        uint8_t *data
-        int size
-        AVPacketSideDataType type
-    cdef AVCodec* av_codec_next(AVCodec*)
-    cdef int av_codec_is_encoder(AVCodec*)
-    cdef int av_codec_is_decoder(AVCodec*)
+
+    cdef const AVCodec* av_codec_next(const AVCodec*)
+    cdef int av_codec_is_encoder(const AVCodec*)
+    cdef int av_codec_is_decoder(const AVCodec*)
 
     cdef struct AVCodecDescriptor:
         AVCodecID id
@@ -145,6 +143,8 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         int flags
         int thread_count
 
+        int refcounted_frames
+
         int profile
 
         AVFrame* coded_frame
@@ -166,6 +166,7 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         float rc_max_available_vbv_use
         float rc_min_vbv_overflow_use
 
+        AVRational framerate
         AVRational time_base
         int ticks_per_frame
 
@@ -198,6 +199,11 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         # User Data
         void *opaque
 
+    cdef AVCodecContext* avcodec_alloc_context3(const AVCodec *codec)
+    cdef void avcodec_free_context(AVCodecContext **ctx)
+
+    cdef int avcodec_get_context_defaults3(AVCodecContext *ctx, const AVCodec *codec)
+
     cdef int avcodec_copy_context(AVCodecContext *dst, const AVCodecContext *src)
 
     cdef struct AVCodecDescriptor:
@@ -219,11 +225,11 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
 
     cdef char* avcodec_get_name(AVCodecID id)
 
-    cdef char* av_get_profile_name(AVCodec *codec, int profile)
+    cdef char* av_get_profile_name(const AVCodec *codec, int profile)
 
     cdef int avcodec_open2(
         AVCodecContext *ctx,
-        AVCodec *codec,
+        const AVCodec *codec,
         AVDictionary **options,
     )
 
@@ -239,28 +245,33 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
 
     # See: http://ffmpeg.org/doxygen/trunk/structAVFrame.html
     # This is a strict superset of AVPicture.
-    cdef struct AVFrame:
-        uint8_t **data
-        int *linesize
-        uint8_t **extended_data
+#    cdef struct AVFrame:
+#        uint8_t **data
+#        int *linesize
+#        uint8_t **extended_data
 
-        int width
-        int height
-        int nb_samples # Audio samples
-        #int channels # Audio channels
-        int sample_rate #Audio Sample rate
-        int channel_layout # Audio channel_layout
-        int format # Should be AVPixelFormat or AV...Format
-        int key_frame # 0 or 1.
+#        int width
+#        int height
+#        int nb_samples # Audio samples
+#        int format # Should be AVPixelFormat or AV...Format
+#        int key_frame # 0 or 1.
+#        int sample_rate #Audio Sample rate
+#        int channel_layout # Audio channel_layout
 
-        int64_t pts
-        int64_t pkt_pts
-        int64_t pkt_dts
+#        int64_t pts
+#        int64_t pkt_pts
+#        int64_t pkt_dts
 
-        int pkt_size
+#        int flags
+#        int64_t best_effort_timestamp
+#        int64_t pkt_pos
+#        int64_t pkt_duration
+#        AVDictionary *metadata
+#        int channels # Audio channels
+#        int pkt_size
 
-        uint8_t **base
-        void *opaque
+#        uint8_t **base
+#        void *opaque
 
     cdef AVFrame* avcodec_alloc_frame()
 
@@ -284,6 +295,10 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         int width,
         int height
     )
+    ctypedef struct AVPacketSideData:
+        uint8_t *data
+        int      size
+        AVPacketSideDataType type
 
     cdef struct AVPacket:
         AVBufferRef *buf
@@ -295,9 +310,8 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
         int flags
         AVPacketSideData *side_data
         int side_data_elems
-        int64_t duration
+        int duration
         int64_t pos
-        void (*destruct)(AVPacket*)
         int64_t convergence_duration
     cdef struct MpegEncContext:
         pass
@@ -498,3 +512,33 @@ cdef extern from "libavcodec/avcodec.pyav.h" nogil:
     cdef unsigned int av_xiphlacing(unsigned char *s, unsigned int v);
     cdef AVHWAccel *av_hwaccel_next(const AVHWAccel *hwaccel);
     cdef void av_register_hwaccel(AVHWAccel *hwaccel);
+    # === Parsers
+
+    cdef struct AVCodecParser:
+        int codec_ids[5]
+
+    cdef AVCodecParser* av_parser_next(AVCodecParser *c)
+
+
+    cdef struct AVCodecParserContext:
+        pass
+
+    cdef AVCodecParserContext *av_parser_init(int codec_id)
+    cdef int av_parser_parse2(
+        AVCodecParserContext *s,
+        AVCodecContext *avctx,
+        uint8_t **poutbuf, int *poutbuf_size,
+        const uint8_t *buf, int buf_size,
+        int64_t pts, int64_t dts,
+        int64_t pos
+    )
+    cdef int av_parser_change(
+        AVCodecParserContext *s,
+        AVCodecContext *avctx,
+        uint8_t **poutbuf, int *poutbuf_size,
+        const uint8_t *buf, int buf_size,
+        int keyframe
+    )
+    cdef void av_parser_close(AVCodecParserContext *s)
+
+    cdef int PYAV_HAVE_AVCODEC_SENDPACKET

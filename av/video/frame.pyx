@@ -25,42 +25,53 @@ cdef class VideoFrame(Frame):
     """
 
     def __cinit__(self, width=0, height=0, format='yuv420p'):
-        if width is _cinit_bypass_sentinel:return
+        if width is _cinit_bypass_sentinel:
+            return
         cdef lib.AVPixelFormat c_format = lib.av_get_pix_fmt(format)
         if c_format < 0:
             raise ValueError('invalid format %r' % format)
         self._init(c_format, width, height)
     cdef _init(self, lib.AVPixelFormat format, unsigned int width, unsigned int height):
         cdef int buffer_size
+        cdef int err = 0
+        self.format = get_video_format(<lib.AVPixelFormat>self.ptr.format, self.ptr.width, self.ptr.height)
         with nogil:
-            self.ptr.width = width
+            lib.av_frame_unref(self.ptr)
+            self.ptr.width  = width
             self.ptr.height = height
             self.ptr.format = format
             if width and height:
                 # Cleanup the old buffer.
-                lib.av_freep(&self._buffer)
+#                lib.av_freep(&self._buffer)
                 # Get a new one.
                 buffer_size = lib.avpicture_get_size(format, width, height)
-                with gil: err_check(buffer_size)
-                self._buffer = <uint8_t *>lib.av_malloc(buffer_size)
-                if not self._buffer:
-                    with gil: raise MemoryError("cannot allocate VideoFrame buffer")
+                with gil:
+                    err_check(buffer_size)
+                err = lib.av_frame_get_buffer(self.ptr, 1)
+                with gil:
+                    err_check(err)
+#                self._buffer = <uint8_t *>lib.av_malloc(buffer_size)
+#                if not self._buffer:
+#                    with gil: raise MemoryError("cannot allocate VideoFrame buffer")
 
                 # Attach the AVPicture to our buffer.
-                lib.avpicture_fill(
-                        <lib.AVPicture *>self.ptr,
-                        self._buffer,
-                        format,
-                        width,
-                        height
-                )
+#                lib.avpicture_fill(
+#                        <lib.AVPicture *>self.ptr,
+#                        self._buffer,
+#                        format,
+#                        width,
+#                        height
+#                )
+#        self.buffer_size = buffer_size
         self._init_properties()
     cdef int _max_plane_count(self):
         return self.format.ptr.nb_components
     cdef _init_properties(self):
         self.format = get_video_format(<lib.AVPixelFormat>self.ptr.format, self.ptr.width, self.ptr.height)
         self._init_planes(VideoPlane)
-    def __dealloc__(self): lib.av_freep(&self._buffer)
+    def __dealloc__(self):
+        pass
+#lib.av_freep(&self._buffer)
     def __repr__(self):
         return '<av.%s #%d, %s %dx%d at 0x%x>' % (
             self.__class__.__name__,
@@ -225,7 +236,7 @@ cdef class VideoFrame(Frame):
 
         """
         from PIL import Image
-        return Image.frombuffer("RGB", (self.width, self.height), self.reformat(format="rgb24", **kwargs).planes[0], "raw", "RGB", 0, 1)
+        return Image.frombuffer("RGB", (self.width, self.height), bytes(self.reformat(format="rgb24", **kwargs).planes[0]), "raw", "RGB", 0, 1)
 
     def to_ndarray(self, **kwargs):
         """Get a numpy array of this frame.

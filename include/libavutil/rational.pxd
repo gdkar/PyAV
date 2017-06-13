@@ -1,19 +1,19 @@
 ##
 #  rational numbers
 #  Copyright (c) 2003 Michael Niedermayer <michaelni@gmx.at>
-# 
+#
 #  This file is part of FFmpeg.
-# 
+#
 #  FFmpeg is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU Lesser General Public
 #  License as published by the Free Software Foundation; either
 #  version 2.1 of the License, or (at your option) any later version.
-# 
+#
 #  FFmpeg is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #  Lesser General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU Lesser General Public
 #  License along with FFmpeg; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -47,7 +47,7 @@ from libc.stdio  cimport *
 from libc.stdlib cimport *
 
 cdef extern from "libavutil/rational.h" nogil:
-    ctypedef struct AVRational:
+    cdef struct AVRational:
         int num; ##< numerator
         int den; ##< denominator
 
@@ -100,7 +100,7 @@ cdef extern from "libavutil/rational.h" nogil:
 ##
 #  Convert a double precision floating point number to a rational.
 #  inf is expressed as {1,0} or {-1,0} depending on the sign.
-# 
+#
 #  @param d double to convert
 #  @param max the maximum allowed numerator and denominator
 #  @return (AVRational) d
@@ -122,12 +122,12 @@ cdef extern from "libavutil/rational.h" nogil:
 
 ##
 #  Converts a AVRational to a IEEE 32bit float.
-# 
+#
 #  The float is returned in a uint32_t and its value is platform indepenant.
 # /
     cdef uint32_t av_q2intfloat(AVRational q);
 
-
+    cdef AVRational AV_TIME_BASE_Q
 ##
 #  Create a rational.
 #  Useful for compilers that do not support compound literals.
@@ -138,6 +138,7 @@ cdef inline AVRational av_make_q(int num, int den):
     r.num = num
     r.den = den
     return r
+
 cdef inline AVRational av_inv_q(AVRational a):
     return av_make_q(a.den, a.num)
 ##

@@ -142,4 +142,3 @@ cdef str media_type_to_string(lib.AVMediaType media_type):
         return "attachment"
     else:
         return "unknown"
-

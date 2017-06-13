@@ -4,12 +4,11 @@ from av.option cimport Option, wrap_option
 
 cdef object _cinit_sentinel = object()
 
-cdef Descriptor wrap_avclass(lib.AVClass *ptr):
+cdef Descriptor wrap_avclass(const lib.AVClass *ptr):
     if ptr == NULL: return None
     cdef Descriptor obj = Descriptor(_cinit_sentinel)
     obj.ptr = ptr
     return obj
-
 
 cdef class Descriptor(object):
     def __cinit__(self, sentinel):
@@ -20,7 +19,7 @@ cdef class Descriptor(object):
         return self.ptr.class_name if self.ptr.class_name else None
     @property
     def options(self):
-        cdef lib.AVOption *ptr
+        cdef const lib.AVOption *ptr
         cdef Option option
         if self._options is None:
             options = []

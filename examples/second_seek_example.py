@@ -1,5 +1,5 @@
 """
-Note this example only really works accurately on constant frame rate media. 
+Note this example only really works accurately on constant frame rate media.
 """
 from video_widgets import *
 from PyQt5 import QtGui

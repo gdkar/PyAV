@@ -1,10 +1,10 @@
 cimport libav as lib
 
 
-cdef class VideoFormat(object):
-
+cdef class VideoFormat:
+    cdef object __weakref__
     cdef lib.AVPixelFormat pix_fmt
-    cdef lib.AVPixFmtDescriptor *ptr
+    cdef const lib.AVPixFmtDescriptor *ptr
     cdef readonly unsigned int width, height
 
     cdef readonly tuple components
@@ -15,10 +15,11 @@ cdef class VideoFormat(object):
     cpdef chroma_height(self, int luma_height=?)
 
 
-cdef class VideoFormatComponent(object):
+cdef class VideoFormatComponent:
+    cdef object __weakref__
 
-    cdef VideoFormat format
+    cdef readonly VideoFormat format
     cdef readonly unsigned int index
-    cdef lib.AVComponentDescriptor *ptr
+    cdef const lib.AVComponentDescriptor *ptr
 
 cdef VideoFormat get_video_format(lib.AVPixelFormat c_format, unsigned int width, unsigned int height)

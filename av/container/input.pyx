@@ -50,6 +50,7 @@ cdef class InputContainer(Container):
             self.streams.add_stream(build_stream(self, self.proxy.ptr.streams[i]))
 
         self.metadata = avdict_to_dict(self.proxy.ptr.metadata)
+
     @property
     def start_time(self):
         return self.proxy.ptr.start_time
@@ -83,7 +84,6 @@ cdef class InputContainer(Container):
         if include_stream == NULL:
             raise MemoryError()
 
-
         cdef int i
         cdef Packet packet
         cdef int ret
@@ -96,16 +96,14 @@ cdef class InputContainer(Container):
                     raise ValueError('stream index %d out of range' % i)
                 include_stream[i] = True
 
+            packet = Packet()
             while True:
-
-
-                packet = Packet()
                 try:
-                    with nogil: ret = lib.av_read_frame(self.proxy.ptr, packet.ptr)
+                    with nogil:
+                        ret = lib.av_read_frame(self.proxy.ptr, packet.ptr)
                     self.proxy.err_check(ret)
                 except AVError:
                     break
-
 
                 if include_stream[packet.ptr.stream_index]:
                     # If AVFMTCTX_NOHEADER is set in ctx_flags, then new streams
@@ -113,10 +111,11 @@ cdef class InputContainer(Container):
                     # http://ffmpeg.org/doxygen/trunk/.html
                     # TODO: find better way to handle this
                     if packet.ptr.stream_index < len(self.streams):
-                        packet.stream = self.streams[packet.ptr.stream_index]
+                        packet._stream = self.streams[packet.ptr.stream_index]
                         # Keep track of this so that remuxing is easier.
-                        packet._time_base = packet.stream._stream.time_base
+                        packet._time_base = packet._stream._stream.time_base
                         yield packet
+                        packet = Packet()
             # Flush!
             for i in range(self.proxy.ptr.nb_streams):
                 if include_stream[i]:

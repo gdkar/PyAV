@@ -27,15 +27,20 @@ def get_frame_count(f, stream):
 class FrameGrabber(Q.QObject):
     frame_ready = Q.pyqtSignal(object, object)
     update_frame_range = Q.pyqtSignal(object)
-    _skip_limit = 64
-    _cache_limit = 256
+    _skip_limit = 4
+    _cache_limit =256
+    _seek_accuracy = 0
 
     @property
     def skip_limit(self):
         return self._skip_limit
+
     @skip_limit.setter
     def skip_limit(self,val):
-        self._skip_limit = int(val)
+        val = int(val)
+        if self._skip_limit != val:
+            print("setting skip limit to {}".format(val))
+            self._skip_limit = int(val)
 
     @property
     def cache_limit(self):
@@ -69,7 +74,8 @@ class FrameGrabber(Q.QObject):
             #print("    pkt", packet.pts, packet.dts, packet)
             if packet.pts:
                 self.pts_seen = True
-            for frame in packet.decode():
+            frames = packet.decode()
+            for frame in frames:
                 if frame_index is None:
                     if self.pts_seen:
                         pts = frame.pts
@@ -78,6 +84,7 @@ class FrameGrabber(Q.QObject):
                         frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
                 elif not frame_index is None:
                     frame_index += 1
+                self.frame_cache[frame_index] = frame
                 yield frame_index, frame
 
     @Q.pyqtSlot(object)
@@ -102,16 +109,26 @@ class FrameGrabber(Q.QObject):
             return
         if target_frame in self.frame_cache:
             return self.frame_cache[target_frame]
-        if ((not list(self.frame_cache.keys()) or target_frame>min(self.frame_cache.keys())) and
+        keylist = list(sorted(self.frame_cache.keys()))
+        while len(self.frame_cache) > self.cache_limit and keylist and keylist[0] + self.skip_limit < target_frame:
+            if target_frame != self.active_frame:
+                return
+            del self.frame_cache[keylist.pop(0)]
+
+        keylist = list(sorted(self.frame_cache.keys()))
+        if ((not keylist) or target_frame>keylist[0] and
             (not self.frame_gen or target_frame < self.last_seen + self.skip_limit)):
             if not self.frame_gen:
                 self.frame_gen = self.next_frame()
+                self.frame_cache.clear()
             for i, (frame_index, frame) in enumerate(self.frame_gen):
-                self.frame_cache[frame_index], self.last_seen = frame, frame_index
+                self.last_seen = frame_index
                 if frame_index > target_frame or i >= self.skip_limit:
                     break
-                if frame_index == target_frame:
-                    return frame
+                if target_frame in self.frame_cache:
+                    return self.frame_cache[target_frame]
+#                if frame_index == target_frame:
+#                    return frame
         print(('seeking to', target_frame))
         seek_frame = target_frame
         rate = self.rate
@@ -125,7 +142,7 @@ class FrameGrabber(Q.QObject):
             target_pts = int(target_sec / time_base) + self.start_time
             if original_target_frame_pts is None:
                 original_target_frame_pts = target_pts
-            self.stream.seek(int(target_pts))
+            self.stream.seek(int(target_pts), backward=seek_frame < self.last_seen)
             self.frame_cache.clear()
             frame_index = None
 #            for index in list(self.frame_cache.keys()):
@@ -135,16 +152,20 @@ class FrameGrabber(Q.QObject):
                 self.frame_gen.close()
                 self.frame_gen = self.next_frame()
             for i, (frame_index, frame) in enumerate(self.frame_gen):
-                self.frame_cache[frame_index] = frame
+#                self.frame_cache[frame_index] = frame
                 self.last_seen = frame_index
+                if len(self.frame_cache) == 1:
+                    self._seek_accuracy = max(self._seek_accuracy,abs(frame.pts - target_pts))
+                    self.skip_limit = max(self.skip_limit, 2 * int(self._seek_accuracy * rate * time_base))
                 # optimization if the time slider has changed, the requested frame no longer valid
-#                if target_frame != self.active_frame:return
+                if target_frame != self.active_frame:
+                    return
                 print(("   ", i, "at frame", frame_index, "at ts:", frame.pts,frame.dts,"target:", target_pts, 'orig', original_target_frame_pts))
                 if frame_index == target_frame:
-                    return self.frame_cache[target_frame]
+                    return frame
                 if frame_index is None:
                     pass
-                if frame_index >= target_frame:
+                elif frame_index >= target_frame:
                     break
             # Check if we over seeked, if we over seekd we need to seek to a earlier time
             # but still looking for the target frame
@@ -158,7 +179,6 @@ class FrameGrabber(Q.QObject):
                             return self.frame_cache[target_frame]
                         print((over_seek, self.frame_cache))
                         break
-
 
                 seek_frame -= 1
                 reseek -= 1
@@ -197,7 +217,7 @@ class FrameGrabber(Q.QObject):
             target_sec = seek_frame * 1/ self.rate
             target_pts = int(target_sec / self.time_base) + self.start_time
 
-            self.stream.seek(int(target_pts))
+            self.stream.seek(int(target_pts),any_frame=True)
 
             frame_index = None
 
@@ -208,7 +228,7 @@ class FrameGrabber(Q.QObject):
             if not frame_index is None:
                 break
             else:
-                seek_frame -= 1
+                seek_frame -= 64
                 retry -= 1
 
 
@@ -325,7 +345,7 @@ class VideoPlayerWidget(Q.QWidget):
         self.setAcceptDrops(True)
         self.timer = Q.QTimer()
         self.timer.setTimerType(Q.PreciseTimer)
-        self.timer.setInterval(1000/24.)
+        self.timer.setInterval(1000/60.)
         self.timer.timeout.connect(self.autoTick)
         self.timer.start()
     def set_file(self, path):

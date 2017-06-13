@@ -1,5 +1,7 @@
 // This header serves to smooth out the differences in FFmpeg and LibAV.
-
+#ifdef __cpluspus
+extern "C" {
+#endif
 #ifdef PYAV_HAVE_LIBSWRESAMPLE
 
     #include <libswresample/swresample.h>
@@ -60,3 +62,8 @@
     static inline const char* swresample_configuration() { return ""; }
     static inline const char* swresample_license() { return ""; }
 #endif
+
+#ifdef __cpluspus
+}
+#endif
+

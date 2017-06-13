@@ -5,7 +5,7 @@ from av.container.core cimport Container
 from av.frame cimport Frame
 from av.packet cimport Packet
 from av.utils cimport err_check
-
+from libc.errno cimport EAGAIN, EINVAL, EFAULT
 
 cdef class AudioStream(Stream):
 
@@ -46,18 +46,38 @@ cdef class AudioStream(Stream):
     @property
     def  channels(self):
         return self._codec_context.channels
-
-    cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
-        if not self.next_frame: self.next_frame = alloc_audio_frame()
-        cdef int completed_frame = 0
-        data_consumed[0] = err_check(lib.avcodec_decode_audio4(self._codec_context, self.next_frame.ptr, &completed_frame, packet))
-        if not completed_frame: return
-        self.next_frame.ptr.pts = lib.av_frame_get_best_effort_timestamp ( self.next_frame.ptr )
-        cdef AudioFrame frame = self.next_frame
-        self.next_frame       = None
-
-        frame._init_properties()
-        return frame
+    cdef AudioFrame _alloc_frame(self):
+        return alloc_audio_frame()
+#    self.next_frame = alloc_audio_frame()
+#    cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
+#        if not self.next_frame:
+#            self.next_frame = self.alloc_frame()
+#        cdef int completed_frame = 0
+#        cdef int err
+#        cdef AudioFrame frame = self.next_frame
+#        with nogil:
+#            err = lib.avcodec_receive_frame(self._codec_context, frame.ptr)
+#            if err < 0:
+#                if err == lib.AVERROR_EOF:
+#                    lib.avcodec_flush_buffers(self._codec_context)
+#                elif err != lib.AVERROR(EAGAIN):
+#                    with gil:
+#                        err_check(err)
+#            else:
+#                completed_frame = 1
+#        if packet:
+#            with nogil:
+#                err = lib.avcodec_send_packet(self._codec_context, packet)
+#            if err == 0:
+#                data_consumed[0] = packet.size
+#            else:
+#                data_consumed[0] = 0
+#        if not completed_frame:
+#            return
+#        frame.ptr.pts = lib.av_frame_get_best_effort_timestamp ( frame.ptr )
+#        self.next_frame       = None
+#        frame._init_properties()
+#        return frame
 
     cpdef encode(self, AudioFrame input_frame):
         """Encodes a frame of audio, returns a packet if one is ready.

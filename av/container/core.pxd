@@ -34,7 +34,7 @@ cdef class ContainerProxy:
 
     cdef int err_check(self, int value) except -1
 
-cdef class Container(object):
+cdef class Container:
     cdef object __weakref__
 
     cdef readonly str name
@@ -45,7 +45,7 @@ cdef class Container(object):
     cdef readonly ContainerFormat format
     cdef _Dictionary options
 
-    cdef ContainerProxy proxy
+    cdef ContainerProxy             proxy
 
-    cdef readonly StreamContainer streams
-    cdef readonly dict metadata
+    cdef readonly StreamContainer   streams
+    cdef readonly dict              metadata

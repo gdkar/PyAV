@@ -31,16 +31,22 @@ cdef class VideoStream(Stream):
         if self._codec_context:
             self.format = get_video_format(<lib.AVPixelFormat>self._codec_context.pix_fmt, self._codec_context.width, self._codec_context.height)
         else:self.format = None
+    cdef VideoFrame _alloc_frame(self):
+        return alloc_video_frame()
     cdef _decode_one(self, lib.AVPacket *packet, int *data_consumed):
         # Create a frame if we don't have one ready.
-        if not self.next_frame:
-            self.next_frame = alloc_video_frame()
+#        if not self.next_frame:
+#            self.next_frame = self.alloc_frame()
+        cdef VideoFrame frame = Stream._decode_one(self, packet,data_consumed)
+        if frame is None:
+            return
         # Decode video into the frame.
-        cdef int completed_frame = 0
-        cdef int result
-        with nogil:result = lib.avcodec_decode_video2(self._codec_context, self.next_frame.ptr, &completed_frame, packet)
-        data_consumed[0] = err_check(result)
-        if not completed_frame:return
+#        cdef int completed_frame = 0
+#        cdef int result
+#        with nogil:
+#            result = lib.avcodec_decode_video2(self._codec_context, self.next_frame.ptr, &completed_frame, packet)
+#        data_consumed[0] = err_check(result)
+#        if not completed_frame:return
         # Check if the frame size has changed so that we can always have a
         # SwsContext that is ready to go.
         if self.last_w != self._codec_context.width or self.last_h != self._codec_context.height:
@@ -54,15 +60,16 @@ cdef class VideoStream(Stream):
             # Create a new SwsContextProxy
             self.reformatter = VideoReformatter()
         # We are ready to send this one off into the world!
-        cdef VideoFrame frame = self.next_frame
-        self.next_frame = None
+#        cdef VideoFrame frame = self.next_frame
+#        self.next_frame = None
         # Tell frame to finish constructing user properties.
-        frame._init_properties()
+#        frame._init_properties()
         # Share our SwsContext with the frames. Most of the time they will end
         # up using the same settings as each other, so it makes sense to cache
         # it like this.
         frame.reformatter = self.reformatter
         return frame
+
     cpdef encode(self, VideoFrame frame=None):
         """Encodes a frame of video, returns a packet if one is ready.
         The output packet does not necessarily contain data for the most recent frame,

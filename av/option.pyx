@@ -3,7 +3,7 @@ cimport libav as lib
 from av.utils cimport avrational_to_fraction, to_avrational
 cdef object _cinit_sentinel = object()
 
-cdef Option wrap_option(lib.AVOption *ptr):
+cdef Option wrap_option(const lib.AVOption *ptr):
     if ptr == NULL: return None
     cdef Option obj = Option(_cinit_sentinel)
     obj.ptr = ptr
@@ -33,7 +33,7 @@ cdef dict _TYPE_NAMES = {
 }
 
 cdef object get_option( void *obj, const char *name, int search_flags ):
-    cdef lib.AVOption * opt = lib.av_opt_find ( obj, name, NULL, 0, search_flags )
+    cdef const lib.AVOption * opt = lib.av_opt_find ( obj, name, NULL, 0, search_flags )
     cdef int64_t INT64
     cdef double DOUBLE
     cdef uint8_t *STRING
@@ -54,7 +54,7 @@ cdef object get_option( void *obj, const char *name, int search_flags ):
         return ret
 
 cdef void set_option( void *obj, const char *name, object val, int search_flags):
-    cdef lib.AVOption * opt = lib.av_opt_find ( obj, name, NULL, 0, search_flags )
+    cdef const lib.AVOption * opt = lib.av_opt_find ( obj, name, NULL, 0, search_flags )
     cdef int64_t INT64
     cdef lib.AVPixelFormat pixfmt
     cdef lib.AVSampleFormat smpfmt

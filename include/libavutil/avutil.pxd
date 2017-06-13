@@ -7,6 +7,8 @@ cdef extern from "libavutil/mathematics.h" nogil:
 cdef extern from "libavutil/rational.h" nogil:
     cdef int av_reduce(int *dst_num, int *dst_den, int64_t num, int64_t den, int64_t max)
 
+#from .rational cimport *
+#include "rational.pxd"
 cdef extern from "libavutil/avutil.pyav.h" nogil:
 
     cdef int   avutil_version()
@@ -67,42 +69,42 @@ cdef extern from "libavutil/avutil.pyav.h" nogil:
     )
 
     # See: http://ffmpeg.org/doxygen/trunk/structAVRational.html
-    ctypedef struct AVRational:
-        int num
-        int den
+#    ctypedef struct AVRational:
+#        int num
+#        int den
 
-    cdef AVRational AV_TIME_BASE_Q
+#    cdef AVRational AV_TIME_BASE_Q
 
     # Rescales from one time base to another
-    cdef int64_t av_rescale_q(
-        int64_t a, # time stamp
-        AVRational bq, # source time base
-        AVRational cq  # target time base
-    )
+#    cdef int64_t av_rescale_q(
+#        int64_t a, # time stamp
+#        AVRational bq, # source time base
+#        AVRational cq  # target time base
+#    )
 
     # Rescale a 64-bit integer with specified rounding.
     # A simple a*b/c isn't possible as it can overflow
-    cdef int64_t av_rescale_rnd(
-        int64_t a,
-        int64_t b,
-        int64_t c,
-        int r # should be AVRounding, but then we can't use bitwise logic.
-    )
+#    cdef int64_t av_rescale_rnd(
+#        int64_t a,
+#        int64_t b,
+#        int64_t c,
+#        int r # should be AVRounding, but then we can't use bitwise logic.
+#    )
 
-    cdef int64_t av_rescale_q_rnd(
-        int64_t a,
-        AVRational bq,
-        AVRational cq,
-        int r # should be AVRounding, but then we can't use bitwise logic.
-    )
+#    cdef int64_t av_rescale_q_rnd(
+#        int64_t a,
+#        AVRational bq,
+#        AVRational cq,
+#        int r # should be AVRounding, but then we can't use bitwise logic.
+#    )
 
-    cdef int64_t av_rescale(
-        int64_t a,
-        int64_t b,
-        int64_t c
-    )
+#    cdef int64_t av_rescale(
+#        int64_t a,
+#        int64_t b,
+#        int64_t c
+#    )
 
-    cdef char* av_strdup(char *s)
+#    cdef char* av_strdup(char *s)
 
     cdef int av_opt_set_int(
         void *obj,
@@ -110,18 +112,7 @@ cdef extern from "libavutil/avutil.pyav.h" nogil:
         int64_t value,
         int search_flags
     )
-    cdef int av_opt_set(void * obj,const char *name,const char *val, int search_flags)
-    cdef int av_opt_set_double(void * obj,const char *name,double val, int search_flags)
-    cdef int av_opt_set_q(void * obj,const char *name,AVRational val, int search_flags)
-    cdef int av_opt_set_bin(void * obj,const char *name,const uint8_t *val, int search_flags)
-    cdef int av_opt_set_channel_layout(void * obj,const char *name,int64_t ch_layout, int search_flags)
-    cdef int av_opt_set_sample_fmt(void * obj,const char *name,AVSampleFormat fmt, int search_flags)
-    cdef int av_opt_set_pixel_fmt(void * obj,const char *name,AVPixelFormat fmt, int search_flags)
-    cdef int av_opt_set_dict_val(void *obj, const char *name, const AVDictionary *val, int search_flags)
-    cdef int av_opt_get(void *obj, const char *name, int search_flags, uint8_t **out_val)
-    cdef int av_opt_get_int(void *obj, const char *name, int search_flags, int64_t *out_val)
-    cdef int av_opt_get_double(void *obj, const char *name, int search_flags, double *out_val)
-    cdef int av_opt_get_q(void *obj, const char *name, int search_flags, AVRational *out_val)
+
 cdef extern from "libavutil/pixdesc.h" nogil:
 
 
@@ -255,14 +246,12 @@ cdef extern from "libavutil/audio_fifo.h" nogil:
     cdef int av_audio_fifo_drain(AVAudioFifo *af, int nb_samples)
     cdef int av_audio_fifo_realloc(AVAudioFifo *af, int nb_samples)
 cdef extern from "stdarg.h" nogil:
-
     # For logging. Should really be in another PXD.
     ctypedef struct va_list:
         pass
 
 
 cdef extern from "Python.h" nogil:
-
     # For logging. See av/logging.pyx for an explanation.
     cdef int Py_AddPendingCall(void *, void *)
     void PyErr_PrintEx(int set_sys_last_vars)
@@ -271,9 +260,7 @@ cdef extern from "Python.h" nogil:
 
 
 cdef extern from "libavutil/opt.h" nogil:
-
     cdef enum AVOptionType:
-
         AV_OPT_TYPE_FLAGS
         AV_OPT_TYPE_INT
         AV_OPT_TYPE_INT64
@@ -292,7 +279,7 @@ cdef extern from "libavutil/opt.h" nogil:
         #AV_OPT_TYPE_COLOR # Missing from FFmpeg
         #AV_OPT_TYPE_CHANNEL_LAYOUT # Missing from FFmpeg
 
-    cdef struct AVOption_default_val:
+    cdef union AVOption_default_val:
         int64_t i64
         double dbl
         const char *str
@@ -302,8 +289,8 @@ cdef extern from "libavutil/opt.h" nogil:
 
         const char *name
         const char *help
-        AVOptionType type
         int offset
+        AVOptionType type
 
         AVOption_default_val default_val
 
@@ -311,7 +298,8 @@ cdef extern from "libavutil/opt.h" nogil:
         double max
         int flags
         const char *unit
-    cdef AVOption *av_opt_find(void *, const char*, const char*, int, int)
+
+    cdef const AVOption *av_opt_find(void *, const char*, const char*, int, int)
 
 cdef extern from "libavutil/log.h" nogil:
 
@@ -337,7 +325,7 @@ cdef extern from "libavutil/log.h" nogil:
         AVClassCategory category
         int parent_log_context_offset
 
-        AVOption *option
+        const AVOption *option
 
     int AV_LOG_QUIET
     int AV_LOG_PANIC

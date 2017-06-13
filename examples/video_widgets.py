@@ -113,7 +113,7 @@ class FrameGrabber(Q.Object):
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
         self.frame = bytearray(rgba.planes[0])
-        bytesPerPixel  =3 
+        bytesPerPixel  =3
         img = Q.Image(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.Image.Format_RGB888)
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
         #pixmap = QtGui.QPixmap.fromImage(img)
@@ -136,7 +136,7 @@ class FrameGrabber(Q.Object):
             pts = frame.dts
             if self.pts_seen:
                 pts = frame.pts
-            print(i, frame_index, packet_num, frame.pts, seek_pts)
+#            print(i, frame_index, packet_num, frame.pts, seek_pts)
             if pts > seek_pts:
                 break
             last_frame = frame
@@ -160,12 +160,12 @@ class FrameGrabber(Q.Object):
             self.stream.seek(target_pts)
             frame_index = None
             for frame_index, frame, packet_num in self.next_frame():
-                print(frame_index, frame, packet_num)
+#                print(frame_index, frame, packet_num)
                 continue
             if not frame_index is None:
                 break
             else:
-                seek_frame -= 1 
+                seek_frame -= 1
                 retry -= 1
         print("frame count seeked", frame_index, "container frame count", frame_count)
         return frame_index or frame_count
@@ -230,6 +230,7 @@ class VideoPlayerWidget(Q.Widget):
         #self.frame_grabber.set_file(path)
         self.load_file.emit(path)
         self.frame_changed(0)
+
     @Q.pyqtSlot(object, object)
     def set_frame_range(self, maximum, rate):
         print("frame range =", maximum, rate, int(maximum * self.timeline_base))
@@ -251,6 +252,7 @@ class VideoPlayerWidget(Q.Widget):
         #self.display.current_index = value
         self.frame_grabber.active_time = value
         self.request_time.emit(value)
+
     def keyPressEvent(self, event):
         if event.key() in (Q.Key_Right, Q.Key_Left):
             direction = 1
@@ -281,6 +283,6 @@ class VideoPlayerWidget(Q.Widget):
         self.frame_grabber.active_time = -1
         self.frame_grabber_thread.quit()
         self.frame_grabber_thread.wait()
-        for key,value in sorted(self.frame_grabber.pts_map.items(),key=lambda x:x[0]):
-            print(key, '=', value)
+#        for key,value in sorted(self.frame_grabber.pts_map.items(),key=lambda x:x[0]):
+#            print(key, '=', value)
         event.accept()

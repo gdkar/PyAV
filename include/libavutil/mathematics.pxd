@@ -34,8 +34,8 @@ from libc.stddef cimport *
 from libc.stdio  cimport *
 from libc.stdlib cimport *
 
-from rational cimport *
-from intfloat cimport *
+#from rational cimport *
+#from intfloat cimport *
 cdef extern from "libavutil/mathematics.h" nogil:
     cdef enum AVRounding:
         AV_ROUND_ZERO     = 0 ##< Round toward zero.
@@ -62,7 +62,7 @@ cdef extern from "libavutil/mathematics.h" nogil:
 ##
 #  Rescale a 64-bit integer with specified rounding.
 #  A simple a*b/c isn't possible as it can overflow.
-# 
+#
 #  @return rescaled value a, or if AV_ROUND_PASS_MINMAX is set and a is
 #          INT64_MIN or INT64_MAX then a is passed through unchanged.
 # /
@@ -75,7 +75,7 @@ cdef extern from "libavutil/mathematics.h" nogil:
 
 ##
 #  Rescale a 64-bit integer by 2 rational numbers with specified rounding.
-# 
+#
 #  @return rescaled value a, or if AV_ROUND_PASS_MINMAX is set and a is
 #          INT64_MIN or INT64_MAX then a is passed through unchanged.
 # /
@@ -93,7 +93,7 @@ cdef extern from "libavutil/mathematics.h" nogil:
 #  Compare 2 integers modulo mod.
 #  That is we compare integers a and b for which only the least
 #  significant log2(mod) bits are known.
-# 
+#
 #  @param mod must be a power of 2
 #  @return a negative value if a is smaller than b
 #          a positive value if a is greater than b
@@ -103,27 +103,37 @@ cdef extern from "libavutil/mathematics.h" nogil:
 
 ##
 #  Rescale a timestamp while preserving known durations.
-# 
+#
 #  @param in_ts Input timestamp
 #  @param in_tb Input timebase
 #  @param fs_tb Duration and# last timebase
 #  @param duration duration till the next call
 #  @param out_tb Output timebase
 # /
-    cdef int64_t av_rescale_delta(AVRational in_tb, int64_t in_ts,  AVRational fs_tb, int duration, int64_t* last, AVRational out_tb);
+    cdef int64_t av_rescale_delta(
+        AVRational in_tb
+      , int64_t in_ts
+      ,  AVRational fs_tb
+      , int duration
+      , int64_t* last
+      , AVRational out_tb);
 
 ##
 #  Add a value to a timestamp.
-# 
+#
 #  This function guarantees that when the same value is repeatly added that
 #  no accumulation of rounding errors occurs.
-# 
+#
 #  @param ts Input timestamp
 #  @param ts_tb Input timestamp timebase
 #  @param inc value to add to ts
 #  @param inc_tb inc timebase
 # /
-    cdef int64_t av_add_stable(AVRational ts_tb, int64_t ts, AVRational inc_tb, int64_t inc);
+    cdef int64_t av_add_stable(
+        AVRational ts_tb
+      , int64_t ts
+      , AVRational inc_tb
+      , int64_t inc);
 
 
     ##

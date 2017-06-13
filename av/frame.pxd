@@ -2,7 +2,7 @@ cimport libav as lib
 
 from av.packet cimport Packet
 
-cdef class Frame(object):
+cdef class Frame:
     cdef object __weakref__
     cdef lib.AVFrame *ptr
 
@@ -15,5 +15,3 @@ cdef class Frame(object):
     cdef _copy_attributes_from(self, Frame source)
 
     cdef _init_properties(self)
-
-

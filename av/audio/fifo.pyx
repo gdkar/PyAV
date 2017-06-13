@@ -77,6 +77,8 @@ cdef class AudioFifo:
         cdef int linesize
         cdef int sample_size
         cdef AudioFrame frame = alloc_audio_frame()
+        frame.ptr.sample_rate = self.rate
+        frame._time_base   = self._time_base
         frame._init(
             self.format.sample_fmt,
             self.layout.layout,
@@ -88,12 +90,10 @@ cdef class AudioFifo:
             <void **>frame.ptr.extended_data,
             nb_samples,
         ))
-        frame.ptr.sample_rate = self.rate
-        frame._time_base   = self._time_base
         frame.ptr.channel_layout = self.layout.layout
         if self.last_pts != lib.AV_NOPTS_VALUE:
             frame.ptr.pts = self.last_pts - self.pts_offset
-
+        frame._recalc_linesize()
         return frame
 
     cpdef peek_at(self, unsigned int nb_samples=0,unsigned int offset=0, bint partial=False):
@@ -175,6 +175,7 @@ cdef class AudioFifo:
             frame.ptr.pts = self.last_pts - self.pts_offset
             self.pts_offset -= int(frame.samples / self.rate / self.time_base)
 
+        frame._recalc_linesize()
         return frame
     def __len__(self):
         return self.samples

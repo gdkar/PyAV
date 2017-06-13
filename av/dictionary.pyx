@@ -3,11 +3,12 @@ import collections
 from av.utils cimport err_check
 
 
-cdef class _Dictionary(object):
+cdef class _Dictionary:
 
     def __cinit__(self, *args, **kwargs):
         for arg in args:
             self.update(arg)
+
         if kwargs:
             self.update(kwargs)
 

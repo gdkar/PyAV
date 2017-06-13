@@ -1,12 +1,11 @@
 cimport libav as lib
 
 
-cdef class _Dictionary(object):
-
+cdef class _Dictionary:
+    cdef object __weakref__
     cdef lib.AVDictionary *ptr
 
     cpdef _Dictionary copy(self)
 
 
 cdef _Dictionary wrap_dictionary(lib.AVDictionary *input_)
-

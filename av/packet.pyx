@@ -1,6 +1,8 @@
 cimport libav as lib
 from libc.stddef cimport ptrdiff_t
+from libc.stdint cimport int64_t, uint64_t,int32_t,uint32_t,int16_t,uint16_t,int8_t,uint8_t
 from av.utils cimport avrational_to_fraction, err_check
+import fractions
 from cpython.buffer cimport PyObject_CheckBuffer, PyObject_GetBuffer, PyBUF_SIMPLE,PyBUF_WRITABLE, PyBUF_ND, PyBUF_STRIDES, PyBUF_INDIRECT,  PyBuffer_Release, PyBuffer_FillInfo, Py_buffer
 
 cdef class Packet:
@@ -20,9 +22,9 @@ cdef class Packet:
             lib.av_packet_free(&self.ptr)
 
     def __repr__(self):
-        return '<av.%s of #%d, dts=%s, pts=%s at 0x%x>' % (
+        return '<av.{} of #{}, dts={:d}, pts={:d} at {:#x}>'.format(
             self.__class__.__name__,
-            self.stream.index,
+            self._stream.index if self._stream is not None else -1,
             self.dts,
             self.pts,
             id(self),
@@ -31,36 +33,36 @@ cdef class Packet:
     def __getbuffer__(self, Py_buffer *view, int flags):
         if self.ptr.buf == NULL:
             raise BufferError
-        cdef lib.AVBufferRef *buf = NULL
-        cdef lib.AVPacket *ptr = self.ptr
-        cdef lib.AVBufferRef **rptr = &ptr.buf
+
+        cdef lib.AVPacket     *ptr  = self.ptr
+        cdef lib.AVBufferRef  *buf =  ptr.buf
         cdef int err = 0
         cdef ptrdiff_t data_offset
-        if flags & PyBUF_WRITABLE:
-            if not lib.av_buffer_is_writable(ptr.buf):
-                data_offset = ptr.data - ptr.buf.data
-                with nogil:
-                    err = lib.av_buffer_make_writable(rptr)
-                err_check(err)
-                ptr.data = ptr.buf.data + data_offset
         with nogil:
-            buf = lib.av_buffer_ref(rptr[0])
+            buf = lib.av_buffer_ref(buf)
         if buf == NULL:
             raise BufferError
 
         view.internal = <void*>buf
-        err = PyBuffer_FillInfo(view, self, ptr.data, ptr.size, 0, flags)
+        err = PyBuffer_FillInfo(view, self, ptr.data, ptr.size, 1, flags)
+        if err < 0:
+            with nogil:
+                lib.av_buffer_unref(&buf)
         err_check(err)
 
     def __releasebuffer__(self, Py_buffer *view):
         if view == NULL:
             return
-        cdef lib.AVBufferRef *ref = <lib.AVBufferRef*>view.internal
-        view.internal = NULL
-        if ref:
-            with nogil:
-                lib.av_buffer_unref(&ref)
 
+        cdef lib.AVBufferRef **refp = <lib.AVBufferRef**>&view.internal
+        if refp[0]:
+            with nogil:
+                lib.av_buffer_unref(refp)
+
+    cpdef Packet copy(self):
+        cdef Packet res = Packet()
+        res.ref(self)
+        return res
 
     # Buffer protocol.
     cdef size_t _buffer_size(self):
@@ -80,43 +82,65 @@ cdef class Packet:
         res = self.stream.decode(self, count=1)
         return res[0] if res else None
 
-    def unref(self):
+    cpdef void unref(self):
         with nogil:
             lib.av_packet_unref(self.ptr)
+            self._time_base.num = 0
+            self._time_base.den = 0
+        self._stream = None
 
-    def ref(self, Packet other):
-        cdef lib.AVPacket * optr = other.ptr
+    cpdef void ref(self, Packet other):
+        cdef lib.AVPacket * optr = NULL
+        if other is not None:
+            optr = other.ptr
         cdef lib.AVPacket * ptr  = self.ptr
         cdef int err = 0
         if ptr != optr:
             self.unref()
-            if optr == NULL:
-                return
-            with nogil:
-                err = lib.av_packet_ref(ptr, optr)
-            err_check(err)
+            if optr != NULL:
+                with nogil:
+                    err = lib.av_packet_ref(ptr, optr)
+                err_check(err)
 
     # Looks circular, but isn't. Silly Cython.
     @property
     def stream(self):
-        return self.stream
+        return self._stream
 
     @stream.setter
     def stream(self, Stream value):
         # Rescale times.
-        cdef lib.AVStream *old = self.stream._stream
-        cdef lib.AVStream *new = value._stream
+        cdef Stream ovalue = self._stream
 
-        if old != new:
-            self.unref()
-        if self.ptr.pts != lib.AV_NOPTS_VALUE:
-            self.ptr.pts = lib.av_rescale_q_rnd(self.ptr.pts, old.time_base, new.time_base, lib.AV_ROUND_NEAR_INF)
-        if self.ptr.dts != lib.AV_NOPTS_VALUE:
-            self.ptr.dts = lib.av_rescale_q_rnd(self.ptr.dts, old.time_base, new.time_base, lib.AV_ROUND_NEAR_INF)
-        self.ptr.duration = lib.av_rescale_q(self.ptr.duration, old.time_base, new.time_base)
+        cdef lib.AVStream *old = ovalue._stream if ovalue is not None else NULL
+        cdef lib.AVStream *new = value._stream if value is not None else NULL
 
-        self.stream = value
-        self.ptr.stream_index = value.index
+
+        cdef int64_t old_pts = self.ptr.pts
+        cdef int64_t old_dts = self.ptr.dts
+
+        if old == new:
+            return
+
+#        self.unref()
+
+        if old and new:
+            if self.ptr.pts != lib.AV_NOPTS_VALUE:
+                self.ptr.pts = lib.av_rescale_q_rnd(self.ptr.pts, old.time_base, new.time_base, lib.AV_ROUND_NEAR_INF)
+
+            if self.ptr.dts != lib.AV_NOPTS_VALUE:
+                self.ptr.dts = lib.av_rescale_q_rnd(self.ptr.dts, old.time_base, new.time_base, lib.AV_ROUND_NEAR_INF)
+
+            self.ptr.duration = lib.av_rescale_q(self.ptr.duration, old.time_base, new.time_base)
+        else:
+            self.ptr.pts = lib.AV_NOPTS_VALUE
+            self.ptr.dts = lib.AV_NOPTS_VALUE
+            self.ptr.duration = 0
+
+        self._stream = value
+        self.ptr.stream_index = value.index if value is not None else -1
+        if new:
+            self._time_base = new.time_base
 
     @property
     def time_base(self):
@@ -124,6 +148,12 @@ cdef class Packet:
 
     @time_base.setter
     def time_base(self, value):
+        if value is None:
+            self._time_base.num = 0
+            self._time_base.den = 0
+            return
+        if not isinstance(value,fractions.Fraction):
+            value = fractions.Fraction(value)
         self._time_base.num = value.numerator
         self._time_base.den = value.denominator
 
@@ -143,6 +173,7 @@ cdef class Packet:
     @property
     def dts(self):
         return None if self.ptr.dts == lib.AV_NOPTS_VALUE else self.ptr.dts
+
     @dts.setter
     def dts(self, v):
         if v is None:
@@ -162,4 +193,3 @@ cdef class Packet:
     @property
     def convergence_duration(self):
         return None if self.ptr.convergence_duration ==lib.AV_NOPTS_VALUE  else self.ptr.convergence_duration
-

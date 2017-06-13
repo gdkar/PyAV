@@ -11,7 +11,7 @@ cdef class VideoFrame(Frame):
 
     # This is the buffer that is used to back everything in the AVPicture/AVFrame.
     # We don't ever actually access it directly.
-    cdef uint8_t *_buffer
+#    cdef uint8_t *_buffer
 
     cdef VideoReformatter reformatter
 
@@ -21,6 +21,5 @@ cdef class VideoFrame(Frame):
     cdef _init_properties(self)
 
     cdef _reformat(self, unsigned int width, unsigned int height, lib.AVPixelFormat format, int src_colorspace, int dst_colorspace)
-
 
 cdef VideoFrame alloc_video_frame()

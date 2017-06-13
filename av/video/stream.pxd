@@ -20,3 +20,4 @@ cdef class VideoStream(Stream):
     cdef int last_h
     cdef int encoded_frame_count
     cpdef encode(self, VideoFrame frame=*)
+    cdef VideoFrame _alloc_frame(self)

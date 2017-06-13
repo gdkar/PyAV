@@ -8,68 +8,12 @@ cimport libav as lib
 
 from av.container.input cimport InputContainer
 from av.container.output cimport OutputContainer
+from av.container.pyio cimport pyio_read,pyio_write,pyio_seek
 from av.format cimport build_container_format
 from av.utils cimport err_check, stash_exception, dict_to_avdict
 
 from av.dictionary import Dictionary # not cimport
 from av.utils import AVError # not cimport
-
-
-cdef int pyio_read(void *opaque, uint8_t *buf, int buf_size) nogil:
-    with gil: return pyio_read_gil(opaque, buf, buf_size)
-
-cdef int pyio_read_gil(void *opaque, uint8_t *buf, int buf_size):
-    cdef ContainerProxy self
-    cdef bytes res
-    try:
-        self = <ContainerProxy>opaque
-        res = self.fread(buf_size)
-        memcpy(buf, <void*><char*>res, len(res))
-        self.pos += len(res)
-        if not res: return lib.AVERROR_EOF
-        return len(res)
-    except Exception as e: return stash_exception()
-
-cdef int pyio_write(void *opaque, uint8_t *buf, int buf_size) nogil:
-    with gil: return pyio_write_gil(opaque, buf, buf_size)
-
-cdef int pyio_write_gil(void *opaque, uint8_t *buf, int buf_size):
-    cdef ContainerProxy self
-    cdef bytes bytes_to_write
-    cdef int bytes_written
-    try:
-        self = <ContainerProxy>opaque
-        bytes_to_write = buf[:buf_size]
-        ret_value = self.fwrite(bytes_to_write)
-        bytes_written = ret_value if isinstance(ret_value, int) else buf_size
-        self.pos += bytes_written
-        return bytes_written
-    except Exception as e: return stash_exception()
-
-
-cdef int64_t pyio_seek(void *opaque, int64_t offset, int whence) nogil:
-    # Seek takes the standard flags, but also a ad-hoc one which means that
-    # the library wants to know how large the file is. We are generally
-    # allowed to ignore this.
-    if whence == lib.AVSEEK_SIZE: return -1
-    with gil:                     return pyio_seek_gil(opaque, offset, whence)
-
-cdef int64_t pyio_seek_gil(void *opaque, int64_t offset, int whence):
-    cdef ContainerProxy self
-    try:
-        self = <ContainerProxy>opaque
-        res = self.fseek(offset, whence)
-        # Track the position for the user.
-        if whence == 0:   self.pos = offset
-        elif whence == 1: self.pos += offset
-        else:             self.pos_is_valid = False
-        if res is None:
-            if self.pos_is_valid: res = self.pos
-            else:                 res = self.ftell()
-        return res
-    except Exception as e: return stash_exception()
-
-
 
 cdef object _cinit_sentinel = object()
 
@@ -105,10 +49,10 @@ cdef class ContainerProxy:
         # Setup Python IO.
         if self.file is not None:
             # TODO: Make sure we actually have these.
-            self.fread = getattr(self.file, 'read', None)
+            self.fread  = getattr(self.file, 'read', None)
             self.fwrite = getattr(self.file, 'write', None)
-            self.fseek = getattr(self.file, 'seek', None)
-            self.ftell = getattr(self.file, 'tell', None)
+            self.fseek  = getattr(self.file, 'seek', None)
+            self.ftell  = getattr(self.file, 'tell', None)
 
             self.pos = 0
             self.pos_is_valid = True
@@ -168,7 +112,8 @@ cdef class ContainerProxy:
 
         if backward:  flags |= lib.AVSEEK_FLAG_BACKWARD
         if any_frame: flags |= lib.AVSEEK_FLAG_ANY
-        with nogil: ret = lib.av_seek_frame(self.ptr, stream_index, timestamp, flags)
+        with nogil:
+            ret = lib.av_seek_frame(self.ptr, stream_index, timestamp, flags)
         err_check(ret)
         self.flush_buffers()
 

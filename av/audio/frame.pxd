@@ -10,7 +10,6 @@ from av.audio.layout cimport AudioLayout
 cdef class AudioFrame(Frame):
 
     # For raw storage of the frame's data; don't ever touch this.
-    cdef uint8_t *_buffer
     cdef size_t _buffer_size
 
     cdef bint align

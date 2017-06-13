@@ -4,9 +4,8 @@ from cpython cimport Py_INCREF, PyTuple_New, PyTuple_SET_ITEM
 
 from av.plane cimport Plane
 from av.utils cimport to_avrational, avrational_to_fraction
-
-cdef class Frame(object):
-
+import fractions
+cdef class Frame:
     """Frame Base Class"""
 
     def __cinit__(self, *args, **kwargs):
@@ -25,18 +24,22 @@ cdef class Frame(object):
         )
     @property
     def dts(self):
-        if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:return None
+        if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:
+            return None
         return self.ptr.pkt_dts
 
     @property
     def pts(self):
-        if self.ptr.pts == lib.AV_NOPTS_VALUE:return None
+        if self.ptr.pts == lib.AV_NOPTS_VALUE:
+            return None
         return self.ptr.pts
 
     @pts.setter
     def pts(self, value):
-        if value is None:self.ptr.pts = lib.AV_NOPTS_VALUE
-        else: self.ptr.pts = value
+        if value is None:
+            self.ptr.pts = lib.AV_NOPTS_VALUE
+        else:
+            self.ptr.pts = value
 
     @property
     def time(self):
@@ -51,6 +54,12 @@ cdef class Frame(object):
 
     @time_base.setter
     def time_base(self, value):
+        if value is None:
+            self._time_base.den = 0
+            self._time_base.num = 0
+            return
+        if not isinstance(value,fractions.Fraction):
+            value = fractions.Fraction(value)
         to_avrational(value,&self._time_base)
 
     cdef _init_planes(self, cls=Plane):
@@ -62,6 +71,7 @@ cdef class Frame(object):
         cdef int plane_count = 0
         while plane_count < max_plane_count and self.ptr.extended_data[plane_count]:
             plane_count += 1
+
         self.planes = PyTuple_New(plane_count)
         for i in range(plane_count):
             # We are constructing this tuple manually, but since Cython does
@@ -71,7 +81,9 @@ cdef class Frame(object):
             Py_INCREF(plane)
             PyTuple_SET_ITEM(self.planes, i, plane)
 
-    cdef int _max_plane_count(self): return INT_MAX
+    cdef int _max_plane_count(self):
+        return INT_MAX
+
     cdef _copy_attributes_from(self, Frame other):
         self.index = other.index
         self._time_base = other._time_base

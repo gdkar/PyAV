@@ -6,7 +6,7 @@ from av.audio.frame cimport AudioFrame
 from av.audio.layout cimport AudioLayout
 from av.audio.resampler cimport AudioResampler
 from av.stream cimport Stream
-
+from av.frame cimport Frame
 
 cdef class AudioStream(Stream):
 
@@ -21,5 +21,4 @@ cdef class AudioStream(Stream):
     cdef AudioFifo fifo
 
     cpdef encode(self, AudioFrame)
-
-
+    cdef AudioFrame _alloc_frame(self)
