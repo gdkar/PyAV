@@ -114,7 +114,8 @@ cdef class ContainerProxy:
         if any_frame: flags |= lib.AVSEEK_FLAG_ANY
         with nogil:
             ret = lib.av_seek_frame(self.ptr, stream_index, timestamp, flags)
-        err_check(ret)
+        if ret < 0:
+            return ret
         self.flush_buffers()
 
     cdef flush_buffers(self):

@@ -26,9 +26,9 @@ def get_frame_count(f, stream):
 
 class FrameGrabber(Q.QObject):
     frame_ready = Q.pyqtSignal(object, object)
-    update_frame_range = Q.pyqtSignal(object)
+    update_frame_range = Q.pyqtSignal(object,object)
     _skip_limit = 4
-    _cache_limit =256
+    _cache_limit = 64
     _seek_accuracy = 0
 
     @property
@@ -90,14 +90,15 @@ class FrameGrabber(Q.QObject):
     @Q.pyqtSlot(object)
     def request_frame(self, target_frame):
         frame = self.get_frame(target_frame)
-        if not frame:return
-        rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
+        if not frame:
+            return
+        rgba = frame.reformat(frame.width, frame.height, "rgba", 'itu709')
         #print(rgba.to_image().save("test.png"))
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
         self.frame = bytearray(rgba.planes[0])
-        bytesPerPixel  =3
-        img = Q.QImage(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.QImage.Format_RGB888)
+        bytesPerPixel  = 4
+        img = Q.QImage(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.QImage.Format_RGBA8888)
 
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
 
@@ -150,13 +151,13 @@ class FrameGrabber(Q.QObject):
 #                    del self.frame_cache[index]
             if self.frame_gen:
                 self.frame_gen.close()
-                self.frame_gen = self.next_frame()
+            self.frame_gen = self.next_frame()
             for i, (frame_index, frame) in enumerate(self.frame_gen):
 #                self.frame_cache[frame_index] = frame
                 self.last_seen = frame_index
                 if len(self.frame_cache) == 1:
                     self._seek_accuracy = max(self._seek_accuracy,abs(frame.pts - target_pts))
-                    self.skip_limit = max(self.skip_limit, 2 * int(self._seek_accuracy * rate * time_base))
+                    self.skip_limit = max(self.skip_limit, int(self._seek_accuracy * rate * time_base))
                 # optimization if the time slider has changed, the requested frame no longer valid
                 if target_frame != self.active_frame:
                     return
@@ -217,7 +218,7 @@ class FrameGrabber(Q.QObject):
             target_sec = seek_frame * 1/ self.rate
             target_pts = int(target_sec / self.time_base) + self.start_time
 
-            self.stream.seek(int(target_pts),any_frame=True)
+            self.stream.seek(int(target_pts),backward=True)
 
             frame_index = None
 
@@ -264,7 +265,7 @@ class FrameGrabber(Q.QObject):
         #self.nb_frames = get_frame_count(self.file, self.stream)
         self.nb_frames = self.get_frame_count()
 
-        self.update_frame_range.emit(self.nb_frames)
+        self.update_frame_range.emit(self.nb_frames, self.rate)
 
 class DisplayWidget(Q.QLabel):
     def __init__(self, parent=None):
@@ -345,19 +346,19 @@ class VideoPlayerWidget(Q.QWidget):
         self.setAcceptDrops(True)
         self.timer = Q.QTimer()
         self.timer.setTimerType(Q.PreciseTimer)
-        self.timer.setInterval(1000/60.)
         self.timer.timeout.connect(self.autoTick)
-        self.timer.start()
     def set_file(self, path):
         #self.frame_grabber.set_file(path)
         self.load_file.emit(path)
         self.frame_changed(0)
 
-    @Q.pyqtSlot(object)
-    def set_frame_range(self, maximum):
+    @Q.pyqtSlot(object,object)
+    def set_frame_range(self, maximum, rate):
         print(("frame range =", maximum))
         self.timeline.setMaximum(maximum)
         self.frame_control.setMaximum(maximum)
+        self.timer.setInterval(1000/rate)
+        self.timer.start()
 
     def frame_changed(self, value):
         self.timeline.blockSignals(True)

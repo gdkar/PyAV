@@ -28,111 +28,6 @@ def get_frame_count(f, stream):
     else:
         raise ValueError("Unable to determine number for frames")
 
-
-class PlayerGLWidget(Q.OpenGLWidget):
-    import ModernGL as gl
-    import struct
-    def __init__(self, *args, **kwargs):
-        super(self.__class__,self).__init__(*args,**kwargs)
-
-#        self.container  = container
-#        self.stream     = next(s for s in self.container.streams if s.type=='video')
-#        self.demuxed    = self.container.demux(self.stream)
-#        self.frameCache = []
-        self.img_width,self.img_height = (640,480)
-#        self.img_width      = self.stream.width
-#        self.img_height     = self.stream.height
-        self._width = self.img_width
-        self.tex_id = 0
-        self._height = self.img_height
-#        self.decodeThread = Q.Thread()
-#        self.frameTimer = Q.QTimer()
-##        self.frameTimer.setTimerType(Q.PreciseTimer)
-#        self.frameTimer.setInterval(int(1000*self.stream.rate))
-#        self.frameTimer.timeout.connect(self.onTimeout)
-#        self.frameTimer.start()
-#        self.decodeThread.start()
-#    def nextFrame(self):
-#        while not self.frameCache:
-#            self.frameCache.extend(next(self.demuxed).decode())
-#        return self.frameCache.pop(0)
-
-#    @Q.pyqtSlot()
-#    def onTimeout(self):
-#        img = self.nextFrame()
-#        w = img.width
-#        h = img.height
-#        self.setImage(w,h,img.reformat(w,h,"rgba"))
-
-    def initializeGL(self):
-        print('initialize GL')
-        try:
-            self.ctx = self.gl.create_context()
-#            GL.Viewport(0, 0, self.width,self.height)
-            vert = self.ctx.vertex_shader("""
-#version 430
-in  vec2 a_position;
-out vec2 v_texcoord;
-void main(void) {
-    gl_Position = vec4(a_position.x,-a_position.y, 0., 1.);
-    v_texcoord  = (a_position + vec2(1.,1.)) * vec2(.5,.5);
-}""")
-            frag = self.ctx.fragment_shader("""
-#version 430
-in vec2  v_texcoord;
-out vec4 f_fragcolor;
-uniform sampler2D u_sampler;
-void main(void) {
-    f_fragcolor = texture(u_sampler, v_texcoord);
-}""")
-            self.prog = self.ctx.program([vert,frag])
-            self.vbo = self.ctx.buffer(self.struct.pack('8f', -1.,-1.,-1.,1.,1.,-1.,1.,1.))
-            self.vao = self.ctx.simple_vertex_array(self.prog,self.vbo,['a_position'])
-            self.tex = self.ctx.texture((self.img_width,self.img_height),4,bytes(self.img_width*self.img_height*4))
-            self.tex.use()
-        except self.gl.Error as error:
-            print("Error: ",error)
-            exit(1)
-        print(('texture id', self.tex))
-    @Q.pyqtSlot(object, object)
-    def setPixmap(self,img,index):
-        self.setImage(img.width,img.height,img)
-    def setImage(self,w,h,img):
-        try:
-            self.prog
-            if self.tex.width != w or self.tex.height != h:
-                self.tex = self.ctx.texture((w,h),4,img.planes[0].to_bytes())
-                print(("setting new image, size {}x{}, tex={}".format(w,h,repr(self.tex))))
-            else:
-                self.tex.write(img.planes[0].to_bytes())
-            self.tex.use()
-            self.img_width  = w
-            self.img_height = h
-            self.update()
-        except:
-            self.show()
-            self.update()
-#            pass
-    def resizeGL(self, w, h):
-        print(('resize to', w, h))
-        self._width  = w
-        self._height = h
-        # gl.matrixMode(gl.PROJECTION)
-        # gl.loadIdentity()
-        # gl.ortho(0, w, 0, h, -10, 10)
-        # gl.matrixMode(gl.MODELVIEW)
-    def paintGL(self):
-        hratio = self.img_width*1.0/self._width
-        vratio = self.img_height*1.0/self._height
-        dratio = max(hratio,vratio)
-        hratio /= dratio
-        vratio /= dratio
-        if self.tex:
-            self.ctx.viewport = (0, 0, hratio*self.width(), vratio*self.height())
-            self.ctx.clear(0,0,0,0)
-            self.tex.use()
-            self.vao.render(self.gl.TRIANGLE_STRIP)
-
 class DisplayWidget(Q.Label):
     def __init__(self, parent=None):
         super(DisplayWidget, self).__init__(parent)
@@ -147,10 +42,8 @@ class DisplayWidget(Q.Label):
     def heightForWidth(self, width):
         return width * 9 / 16.0
     @Q.pyqtSlot(object, object)
-    def setPixmap(self, rgba, index):
+    def setPixmap(self, img, index):
         #if index == self.current_index:
-        bytesPerPixel  = rgba.format.bits_per_pixel//8
-        img = Q.Image(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.Image.Format_RGBA8888)
         self.pixmap = Q.Pixmap.fromImage(img)
         #super(DisplayWidget, self).setPixmap(self.pixmap)
         super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Q.KeepAspectRatio, Q.SmoothTransformation))
@@ -162,7 +55,6 @@ class DisplayWidget(Q.Label):
             super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Q.KeepAspectRatio, Q.SmoothTransformation))
     def sizeHint(self):
         return Q.QSize(1920/2.5,1080/2.5)
-
 class FrameGrabber(Q.Object):
     frame_ready = Q.pyqtSignal(object, object)
     update_frame_range = Q.pyqtSignal(object, object)
@@ -211,20 +103,21 @@ class FrameGrabber(Q.Object):
                     self.pts_map[pts] = secs
                 #if frame.pts == None:
                 yield frame_index, frame, packet_num
-
     @Q.pyqtSlot(object)
     def request_time(self, second):
         frame = self.get_frame(second)
         if not frame:
             return
-        rgba = frame.reformat(frame.width, frame.height, "rgba", 'itu709')
+        rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
         #print(rgba.to_image().save("test.png"))
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
-        self.frame = rgba
+        self.frame = bytearray(rgba.planes[0])
+        bytesPerPixel  =3
+        img = Q.Image(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.Image.Format_RGB888)
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
         #pixmap = QtGui.QPixmap.fromImage(img)
-        self.frame_ready.emit(rgba, second)
+        self.frame_ready.emit(img, second)
     def get_frame(self, target_sec):
         if target_sec != self.active_time:
             return
@@ -234,7 +127,7 @@ class FrameGrabber(Q.Object):
         seek_sec   = (target_sec + (self.start_time * time_base))
         target_pts = (target_sec / time_base)
         seek_pts   = (seek_sec / self.time_base)
-        self.stream.seek(float(seek_sec))
+        self.stream.seek(float(seek_sec), backward=True,any_frame=False)
         #frame_cache = []
         last_frame= None
         for i, (frame_index, frame, packet_num) in enumerate(self.next_frame()):
@@ -286,7 +179,7 @@ class FrameGrabber(Q.Object):
         self.arate = get_frame_rate(self.astream)
         self.atime_base = self.astream.time_base
 #        index, first_frame, packet_num = next(self.next_frame())
-        self.stream.seek(self.stream.start_time, any_frame=True)
+        self.stream.seek(self.stream.start_time, any_frame=False)
         # find the pts of the first frame
         index, first_frame, packet_num = next(self.next_frame())
         if self.pts_seen:
@@ -307,12 +200,10 @@ class FrameGrabber(Q.Object):
 class VideoPlayerWidget(Q.Widget):
     request_time = Q.pyqtSignal(object)
     load_file = Q.pyqtSignal(object)
-    auto_tick = 0
-    paused = False
-    def __init__(self, parent=None, display_type = DisplayWidget):
+    def __init__(self, parent=None):
         super(VideoPlayerWidget, self).__init__(parent)
         self.rate = None
-        self.display = display_type()
+        self.display = DisplayWidget()
         self.timeline = Q.ScrollBar(Q.Horizontal)
         self.timeline_base = 100000
         self.frame_grabber = FrameGrabber()
@@ -351,12 +242,6 @@ class VideoPlayerWidget(Q.Widget):
     def slider_changed(self, value):
         print('..', value)
         self.frame_changed(value * 1 / (self.timeline_base))
-
-    @Q.pyqtSlot()
-    def autoTick(self):
-        if not self.paused:
-            self.frame_control.setValue(self.frame_control.value()+self.auto_tick * 1e-3)
-
     def frame_changed(self, value):
         self.timeline.blockSignals(True)
         self.frame_control.blockSignals(True)
@@ -378,8 +263,6 @@ class VideoPlayerWidget(Q.Widget):
                 direction *= 10
             direction = direction * 1/self.rate
             self.frame_changed(self.frame_control.value() + direction)
-        elif event.key() == Q.Key_Space:
-            self.paused = not self.paused
         else:
             super(VideoPlayerWidget,self).keyPressEvent(event)
     def mousePressEvent(self, event):
