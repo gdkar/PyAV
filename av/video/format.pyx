@@ -52,7 +52,7 @@ cdef class VideoFormat:
     def __int__(self):
         return int(self.pix_fmt)
     @property
-    def bis_per_pixel(self):
+    def bits_per_pixel(self):
         return lib.av_get_bits_per_pixel(self.ptr)
     @property
     def padded_bits_per_pixel(self):

@@ -34,10 +34,18 @@ if __name__ == "__main__":
     Q.SurfaceFormat.setDefaultFormat(fmt)
 
     app = Q.Application(sys.argv)
-    window = VideoPlayerWidget()
+    window = VideoPlayerWidget(display_type=PlayerGLWidget)
+    start_time = time.time()
+
     test_file = sys.argv[1]
     window.set_file(test_file)
+    window.auto_tick = 1000/30.
+    timer = Q.QTimer()
+    timer.setTimerType(Q.PreciseTimer)
+    timer.setInterval(1000/30)
+    timer.timeout.connect(window.autoTick)
+    timer.start()
+
     window.show()
     ret = app.exec_()
     sys.exit(ret)
-

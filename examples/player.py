@@ -1,9 +1,3 @@
-
-try:
-    str
-except NameError:
-    str = str
-
 import argparse
 import ctypes
 import struct, array
@@ -23,7 +17,6 @@ HEIGHT = 540
 
 
 class PlayerGLWidget(Q.OpenGLWidget):
-
     def __init__(self, container, *args, **kwargs):
         super(self.__class__,self).__init__(*args,**kwargs)
 
@@ -123,10 +116,8 @@ class Canvas(Q.QMainWindow):
     def __init__(self,filename,format=None,parent=None):
         super(self.__class__,self).__init__(parent)
         self.widget = PlayerGLWidget(container=av.open(filename))
-#        self.widget.setFixedWidth(WIDTH)
-#        self.widget.setFixedHeight(HEIGHT)
-#        self.widget.setSizePolicy(Q.SizePolicy.Expanding,Q.SizePolicy.Expanding)
         self.setCentralWidget(self.widget)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--format')
 parser.add_argument('path')
