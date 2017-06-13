@@ -20,7 +20,7 @@ cdef class VideoCodecContext(CodecContext):
         self.last_h = 0
 
     cdef _init(self, lib.AVCodecContext *ptr, lib.AVCodec *codec):
-        CodecContext._init(self, ptr, codec) # TODO: Can this be `super`?
+        CodecContext._init(self,ptr, codec) # TODO: Can this be `super`?
         self._build_format()
         self.encoded_frame_count = 0
 
@@ -85,7 +85,7 @@ cdef class VideoCodecContext(CodecContext):
         return alloc_video_frame()
 
     cdef _setup_decoded_frame(self, Frame frame):
-        CodecContext._setup_decoded_frame(self, frame)
+        super()._setup_decoded_frame(frame)
         cdef VideoFrame vframe = frame
         vframe._init_user_attributes()
 

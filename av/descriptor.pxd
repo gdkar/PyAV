@@ -1,7 +1,8 @@
 cimport libav as lib
 
 
-cdef class Descriptor(object):
+cdef class Descriptor:
+    cdef object __weakref__
     cdef const lib.AVClass *ptr
     cdef object _options # Option list cache.
 

@@ -55,6 +55,7 @@ class DisplayWidget(Q.Label):
             super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Q.KeepAspectRatio, Q.SmoothTransformation))
     def sizeHint(self):
         return Q.QSize(1920/2.5,1080/2.5)
+
 class FrameGrabber(Q.Object):
     frame_ready = Q.pyqtSignal(object, object)
     update_frame_range = Q.pyqtSignal(object, object)
@@ -103,18 +104,19 @@ class FrameGrabber(Q.Object):
                     self.pts_map[pts] = secs
                 #if frame.pts == None:
                 yield frame_index, frame, packet_num
+
     @Q.pyqtSlot(object)
     def request_time(self, second):
         frame = self.get_frame(second)
         if not frame:
             return
-        rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
+        rgba = frame.reformat(frame.width, frame.height, "rgba", 'itu709')
         #print(rgba.to_image().save("test.png"))
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
-        self.frame = bytearray(rgba.planes[0])
-        bytesPerPixel  =3
-        img = Q.Image(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.Image.Format_RGB888)
+        self.frame = bytes(rgba.planes[0])
+        bytesPerPixel  = rgba.
+        img = Q.Image(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.Image.Format_RGBA8888)
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
         #pixmap = QtGui.QPixmap.fromImage(img)
         self.frame_ready.emit(img, second)

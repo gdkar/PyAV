@@ -119,11 +119,15 @@ cdef extern from "libavutil/pixdesc.h" nogil:
     # See: http://ffmpeg.org/doxygen/trunk/structAVComponentDescriptor.html
     cdef struct AVComponentDescriptor:
         # These are bitfields, but this should generate the right C anyways.
-        unsigned int plane
-        unsigned int step_minus1
-        unsigned int offset_plus1
-        unsigned int shift
-        unsigned int depth_minus1
+        int plane
+        int step
+        int offset
+        int shift
+        int depth
+#        unsigned int step_minus1
+#        unsigned int offset_plus1
+#        unsigned int shift
+#        unsigned int depth_minus1
 
     cdef enum AVPixFmtFlags:
         AV_PIX_FMT_FLAG_BE
@@ -139,12 +143,15 @@ cdef extern from "libavutil/pixdesc.h" nogil:
         uint8_t nb_components
         uint8_t log2_chroma_w
         uint8_t log2_chroma_h
-        uint8_t flags
+        uint64_t flags
         AVComponentDescriptor comp[4]
+        const char *alias
 
     cdef AVPixFmtDescriptor* av_pix_fmt_desc_get(AVPixelFormat pix_fmt)
     cdef AVPixFmtDescriptor* av_pix_fmt_desc_next(AVPixFmtDescriptor *prev)
-
+    cdef int av_get_bits_per_pixel(const AVPixFmtDescriptor *pixdesc)
+    cdef int av_get_padded_bits_per_pixel(const AVPixFmtDescriptor *pixdesc)
+    cdef int av_pix_fmt_count_planes(AVPixelFormat pix_fmt)
     cdef char * av_get_pix_fmt_name(AVPixelFormat pix_fmt)
     cdef AVPixelFormat av_get_pix_fmt(char* name)
 

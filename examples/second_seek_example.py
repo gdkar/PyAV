@@ -27,6 +27,12 @@ def get_frame_count(f, stream):
     elif f.duration:      return pts_to_frame(f.duration, 1/float(AV_TIME_BASE), get_frame_rate(stream), 0)
     else:raise ValueError("Unable to determine number for frames")
 if __name__ == "__main__":
+    fmt = Q.SurfaceFormat.defaultFormat()
+    fmt.setVersion(4,5)
+    fmt.setProfile(Q.SurfaceFormat.CoreProfile)
+    fmt.setSamples(4)
+    Q.SurfaceFormat.setDefaultFormat(fmt)
+
     app = Q.Application(sys.argv)
     window = VideoPlayerWidget()
     test_file = sys.argv[1]

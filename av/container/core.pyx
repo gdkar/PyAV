@@ -138,18 +138,20 @@ cdef class Container:
         self.writeable = isinstance(self, OutputContainer)
         if not self.writeable and not isinstance(self, InputContainer):
             raise RuntimeError('Container cannot be extended except')
-        if isinstance(file_, basestring): self.name = file_
+        if isinstance(file_, basestring):
+            self.name = file_
         else:
             self.name = str(getattr(file_, 'name', None))
             self.file = file_
-        if format_name is not None: self.format = ContainerFormat(format_name)
+        if format_name is not None:
+            self.format = ContainerFormat._create(format_name)
         self.options = Dictionary(**(options or {}))
         self.proxy = ContainerProxy(_cinit_sentinel, self)
         if format_name is None:
             self.format = build_container_format(self.proxy.ptr.iformat, self.proxy.ptr.oformat)
 
     def __repr__(self):
-        return '<av.%s %r>' % (self.__class__.__name__, self.file or self.name)
+        return '<av.{} {}>'.format(self.__class__.__name__, self.file or self.name)
 
 
 
@@ -171,9 +173,13 @@ def open(file, mode=None, format=None, options=None):
 
     """
 
-    if mode is None: mode = getattr(file, 'mode', None)
-    if mode is None: mode = 'r'
+    if mode is None:
+        mode = getattr(file, 'mode', None)
+    if mode is None:
+        mode = 'r'
 
-    if mode.startswith('r'): return InputContainer(_cinit_sentinel, file, format, options)
-    if mode.startswith('w'): return OutputContainer(_cinit_sentinel, file, format, options)
+    if mode.startswith('r'):
+        return InputContainer(_cinit_sentinel, file, format, options)
+    if mode.startswith('w'):
+        return OutputContainer(_cinit_sentinel, file, format, options)
     raise ValueError("mode must be 'r' or 'w'; got %r" % mode)

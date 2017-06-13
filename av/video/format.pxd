@@ -1,11 +1,11 @@
 cimport libav as lib
 
-
 cdef class VideoFormat:
     cdef object __weakref__
     cdef lib.AVPixelFormat pix_fmt
     cdef const lib.AVPixFmtDescriptor *ptr
-    cdef readonly unsigned int width, height
+    cdef readonly unsigned int width
+    cdef readonly unsigned int height
 
     cdef readonly tuple components
 

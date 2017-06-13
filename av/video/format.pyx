@@ -10,7 +10,7 @@ cdef VideoFormat get_video_format(lib.AVPixelFormat c_format, unsigned int width
     return format
 
 
-cdef class VideoFormat(object):
+cdef class VideoFormat:
     """
 
         >>> format = VideoFormat('rgb24')
@@ -41,15 +41,7 @@ cdef class VideoFormat(object):
         self.ptr = lib.av_pix_fmt_desc_get(pix_fmt)
         self.width = width
         self.height = height
-
-        self.components = PyTuple_New(self.ptr.nb_components)
-        for i in range(self.ptr.nb_components):
-            # We are constructing this tuple manually, but since Cython does
-            # not understand reference stealing we must manually Py_INCREF
-            # so that when Cython Py_DECREFs it doesn't release our object.
-            c = VideoFormatComponent(self, i)
-            Py_INCREF(c)
-            PyTuple_SET_ITEM(self.components, i, c)
+        self.components = tuple( VideoFormatComponent(self, i) for i in range(self.ptr.nb_components))
 
     def __repr__(self):
         if self.width or self.height:
@@ -59,6 +51,13 @@ cdef class VideoFormat(object):
 
     def __int__(self):
         return int(self.pix_fmt)
+    @property
+    def bis_per_pixel(self):
+        return lib.av_get_bits_per_pixel(self.ptr)
+    @property
+    def padded_bits_per_pixel(self):
+        return lib.av_get_padded_bits_per_pixel(self.ptr)
+
     @property
     def name(self):
         """Canonical name of the pixel format."""
@@ -89,6 +88,10 @@ cdef class VideoFormat(object):
         """The pixel format contains RGB-like data (as opposed to YUV/grayscale)."""
         return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_RGB)
 
+    @property
+    def count_planes(self):
+        return lib.av_pix_fmt_count_planes(self.pix_fmt)
+
     cpdef chroma_width(self, int luma_width=0):
         """chroma_width(luma_width=0)
 
@@ -113,7 +116,7 @@ cdef class VideoFormat(object):
 
 
 
-cdef class VideoFormatComponent(object):
+cdef class VideoFormatComponent:
 
     def __cinit__(self, VideoFormat format, size_t index):
         self.format = format
@@ -128,13 +131,32 @@ cdef class VideoFormatComponent(object):
     @property
     def bits(self):
         """Number of bits in the component."""
-        return self.ptr.depth_minus1 + 1
+        return self.ptr.depth
+    @property
+    def depth(self):
+        """Number of bits in the component."""
+        return self.ptr.depth
+
+    @property
+    def shift(self):
+        """Number of bits in the component."""
+        return self.ptr.shift
 
     @property
     def is_alpha(self):
         """Is this component an alpha channel?"""
         return ((self.index == 1 and self.format.ptr.nb_components == 2) or
                 (self.index == 3 and self.format.ptr.nb_components == 4))
+
+    @property
+    def is_red(self):
+        return (self.index == 0 and self.format.is_rgb)
+    @property
+    def is_green(self):
+        return (self.index == 1 and self.format.is_rgb)
+    @property
+    def is_blue(self):
+        return (self.index == 1 and self.format.is_rgb)
 
     @property
     def is_luma(self):
@@ -166,7 +188,12 @@ cdef class VideoFormatComponent(object):
 
         """
         return self.format.chroma_height() if self.is_chroma else self.format.height
-
+    @property
+    def step(self):
+        return self.ptr.step
+    @property
+    def offset(self):
+        return self.ptr.offset
 
 names = set()
 cdef lib.AVPixFmtDescriptor *desc = NULL
