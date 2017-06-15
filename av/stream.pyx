@@ -279,6 +279,11 @@ cdef class Stream:
         if not completed_frame:
             return
         frame.ptr.pts = lib.av_frame_get_best_effort_timestamp ( frame.ptr )
-
+        frame.ptr.pts = lib.av_rescale_q(
+            frame.ptr.pts
+          , self._codec_context.time_base
+          , self._stream.time_base
+            )
+        frame._time_base = self._codec_context.time_base
         frame._init_properties()
         return frame

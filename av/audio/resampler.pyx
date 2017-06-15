@@ -22,13 +22,10 @@ cdef class AudioResampler(object):
         else: self.format = None
         if layout is not None:
             self.layout = layout if isinstance(layout, AudioLayout) else AudioLayout(layout)
-        else:
-            self.layout = None
+        else: self.layout = None
         self.rate = int(rate) if rate else 0
         self.ptr = lib.swr_alloc()
-        if not self.ptr:
-            raise ValueError("could not create SwrContext")
-
+        if not self.ptr: raise ValueError("could not create SwrContext")
     def __dealloc__(self):
         if self.ptr: lib.swr_close(self.ptr)
         lib.swr_free(&self.ptr)
@@ -88,7 +85,7 @@ cdef class AudioResampler(object):
         output._init(
             self.format.sample_fmt,
             self.layout.layout,
-            0,
+            output_nb_samples,
             0, # Align?
         )
         if lib.swr_convert_frame(self.ptr,output.ptr,frame.ptr) < 0:
@@ -105,9 +102,10 @@ cdef class AudioResampler(object):
         # Copy some attributes.
         output._copy_attributes_from(frame)
         # Empty frame.
-        if output.ptr.nb_samples <= 0:
-            return
+        if output.ptr.nb_samples <= 0: return
         # Recalculate linesize since the initial number of samples was
         # only an estimate.
         output._recalc_linesize()
         return output
+
+

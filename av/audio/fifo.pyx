@@ -12,12 +12,12 @@ cdef class AudioFifo:
         lib.av_audio_fifo_free(self.ptr)
 
     def __repr__(self):
-        return '<av.{:s} nb_samples:{} {}hz {:s} {:s} at 0x{:x}'.format(
+        return '<av.{:s} nb_samples:{:d} {:d}hz {:s} {:s} at 0x{:x}'.format(
                 self.__class__.__name__,
                 self.samples or 0,
                 self.rate or 0,
-                self.format or 'no format',
-                self.layout or 'no layout',
+                self.format.name if self.format is not None else 'no format',
+                self.layout.name if self.layout is not None else 'no layout',
                 id(self)
                 )
     def __cinit__(self):
@@ -38,15 +38,16 @@ cdef class AudioFifo:
             self.ptr = lib.av_audio_fifo_alloc(
                 self.format.sample_fmt,
                 len(self.layout.channels),
-                frame.ptr.nb_samples * 2, # Just a default number of samples; it will adjust.
+                frame.ptr.nb_samples * 4, # Just a default number of samples; it will adjust.
             )
-            if not self.ptr: raise ValueError('could not create fifo')
+            if not self.ptr:
+                raise ValueError('could not create fifo')
         # Make sure nothing changed.
         else:
             if (
-                frame.ptr.format != self.format.sample_fmt or
+                frame.ptr.format         != self.format.sample_fmt or
                 frame.ptr.channel_layout != self.layout.layout or
-                frame.ptr.sample_rate != self.rate
+                frame.ptr.sample_rate    != self.rate
             ):
                 raise ValueError('frame does not match fifo parameters')
         if frame.ptr.pts != lib.AV_NOPTS_VALUE:
@@ -63,11 +64,12 @@ cdef class AudioFifo:
         nb_samples = nb_samples or self.samples
         nb_samples = min(nb_samples,self.samples)
         err_check(lib.av_audio_fifo_drain(self.ptr,nb_samples))
-        self.pts_offset -= int(nb_samples / self.rate / self.time_base)
+        self.pts_offset -= int(nb_samples / (self.rate * self.time_base))
         return nb_samples
 
     cpdef peek(self, unsigned int nb_samples=0, bint partial=False):
-        if not self.samples: return
+        if not self.samples:
+            return
         nb_samples = nb_samples or self.samples
         if not nb_samples:
             return
@@ -77,14 +79,20 @@ cdef class AudioFifo:
         cdef int linesize
         cdef int sample_size
         cdef AudioFrame frame = alloc_audio_frame()
-        frame.ptr.sample_rate = self.rate
         frame._time_base   = self._time_base
+        frame.ptr.sample_rate = self.rate
         frame._init(
             self.format.sample_fmt,
             self.layout.layout,
             nb_samples,
-            1, # Align?
-        )
+            1)
+
+#        frame._init(
+#            self.format.sample_fmt,
+#            self.layout.layout,
+##            nb_samples,
+#            1, # Align?
+#        )
         err_check(lib.av_audio_fifo_peek(
             self.ptr,
             <void **>frame.ptr.extended_data,

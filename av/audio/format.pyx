@@ -37,7 +37,7 @@ cdef class AudioFormat(object):
         self.sample_fmt = sample_fmt
 
     def __repr__(self):
-        return '<av.AudioFormat {}s>'.format(self.name)
+        return '<av.AudioFormat {}>'.format(self.name)
     @property
     def name(self):
         """Canonical name of the sample format.
