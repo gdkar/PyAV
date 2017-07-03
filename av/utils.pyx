@@ -62,7 +62,7 @@ cdef int stash_exception(exc_info=None):
 
 cdef int _last_log_count = 0
 
-cdef int err_check(int res=0, str filename=None) except -1:
+cdef int err_check(long res=0, str filename=None) except -1:
 
     global _err_count
     global _last_log_count
@@ -135,7 +135,7 @@ cdef dict_to_avdict(lib.AVDictionary **dst, dict src, bint clear=True):
 # === FRACTIONS ===
 # =================
 
-cdef object avrational_to_faction(lib.AVRational *input):
+cdef object avrational_to_fraction(lib.AVRational *input):
     if input.num and input.den:
         return Fraction(input.num, input.den)
 

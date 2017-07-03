@@ -7,7 +7,7 @@ from av.bytesource cimport ByteSource
 
 cdef class Packet(Buffer):
 
-    cdef lib.AVPacket struct
+    cdef lib.AVPacket * _ptr
 
     cdef Stream _stream
 

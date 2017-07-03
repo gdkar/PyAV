@@ -32,7 +32,7 @@ cdef class ContainerProxy(object):
     cdef long pos
     cdef bint pos_is_valid
 
-    cdef int err_check(self, int value) except -1
+    cdef int err_check(self, long value) except -1
 
 
 cdef class Container(object):

@@ -5,7 +5,7 @@ cimport libav as lib
 
 cdef int stash_exception(exc_info=*)
 
-cdef int err_check(int res=*, str filename=*) except -1
+cdef int err_check(long res=*, str filename=*) except -1
 
 
 
@@ -14,7 +14,7 @@ cdef dict_to_avdict(lib.AVDictionary **dst, dict src, bint clear=*)
 
 
 
-cdef object avrational_to_faction(lib.AVRational *input)
+cdef object avrational_to_fraction(lib.AVRational *input)
 cdef object to_avrational(object value, lib.AVRational *input)
 cdef object av_frac_to_fraction(lib.AVFrac *input)
 

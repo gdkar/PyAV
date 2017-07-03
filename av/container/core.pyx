@@ -162,7 +162,7 @@ cdef class ContainerProxy(object):
                     lib.avcodec_flush_buffers(stream.codec)
 
 
-    cdef int err_check(self, int value) except -1:
+    cdef int err_check(self, long value) except -1:
         return err_check(value, filename=self.name)
 
 

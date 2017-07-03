@@ -68,7 +68,7 @@ cdef class AudioCodecContext(CodecContext):
 
         err_check(lib.avcodec_encode_audio2(
             self.ptr,
-            &packet.struct,
+            packet._ptr,
             frame.ptr if frame is not None else NULL,
             &got_packet,
         ))
