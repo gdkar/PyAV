@@ -6,7 +6,9 @@ from .common import *
 
 from av.video.stream import VideoStream
 from av.audio.stream import AudioStream
-
+try:    xrange
+except NameError:
+    xrange = range
 
 WIDTH = 320
 HEIGHT = 240

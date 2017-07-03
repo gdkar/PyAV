@@ -85,7 +85,10 @@ class TestVideoFrameTransforms(TestCase):
     def setUp(self):
         if not Image:
             raise SkipTest()
-        self.image = Image.open(fate_png())
+        with open(fate_png(),'rb') as _image:
+            self.image = Image.open(_image)
+            self.image.load()
+#        self.image = Image.open(fate_png())
         self.width, self.height = self.image.size
 
     def test_roundtrip_low_api(self):

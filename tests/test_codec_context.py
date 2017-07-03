@@ -1,8 +1,10 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 from fractions import Fraction
 
-from common import *
+from .common import *
+import sys
+mode_ext = 'b' if is_py3 else 'b'
 
 from av.buffer import Buffer
 from av.packet import Packet
@@ -56,7 +58,6 @@ class TestCodecContext(TestCase):
         self.image_sequence_encode('tiff')
 
     def image_sequence_encode(self, codec_name):
-
         try:
             codec = Codec(codec_name, 'w')
         except UnknownCodecError:
@@ -94,7 +95,7 @@ class TestCodecContext(TestCase):
                 codec_name if codec_name != 'mjpeg' else 'jpg',
             ))
             path_list.append(path)
-            with open(path, 'wb') as f:
+            with open(path, 'w' + mode_ext) as f:
                 f.write(new_packet)
             frame_count += 1
             if frame_count > 5:
@@ -103,7 +104,7 @@ class TestCodecContext(TestCase):
         ctx = av.Codec(codec_name, 'r').create()
 
         for path in path_list:
-            with open(path, 'rb') as f:
+            with open(path, 'r' + mode_ext) as f:
                 size = os.fstat(f.fileno()).st_size
                 packet = Packet(size)
                 size = f.readinto(packet)
@@ -263,7 +264,7 @@ class TestCodecContext(TestCase):
 
         test_bad = False
 
-        with open(path, 'w') as f:
+        with open(path, 'w' + mode_ext) as f:
             for frame in iter_frames(container, audio_stream):
 
                 # We need to let the encoder retime.
