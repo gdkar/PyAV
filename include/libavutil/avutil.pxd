@@ -7,6 +7,8 @@ cdef extern from "libavutil/mathematics.h" nogil:
 cdef extern from "libavutil/rational.h" nogil:
     cdef int av_reduce(int *dst_num, int *dst_den, int64_t num, int64_t den, int64_t max)
 
+#from .rational cimport *
+#include "rational.pxd"
 cdef extern from "libavutil/avutil.pyav.h" nogil:
 
     cdef int   avutil_version()
@@ -67,42 +69,42 @@ cdef extern from "libavutil/avutil.pyav.h" nogil:
     )
 
     # See: http://ffmpeg.org/doxygen/trunk/structAVRational.html
-    ctypedef struct AVRational:
-        int num
-        int den
+#    ctypedef struct AVRational:
+#        int num
+#        int den
 
-    cdef AVRational AV_TIME_BASE_Q
+#    cdef AVRational AV_TIME_BASE_Q
 
     # Rescales from one time base to another
-    cdef int64_t av_rescale_q(
-        int64_t a, # time stamp
-        AVRational bq, # source time base
-        AVRational cq  # target time base
-    )
+#    cdef int64_t av_rescale_q(
+#        int64_t a, # time stamp
+#        AVRational bq, # source time base
+#        AVRational cq  # target time base
+#    )
 
     # Rescale a 64-bit integer with specified rounding.
     # A simple a*b/c isn't possible as it can overflow
-    cdef int64_t av_rescale_rnd(
-        int64_t a,
-        int64_t b,
-        int64_t c,
-        int r # should be AVRounding, but then we can't use bitwise logic.
-    )
+#    cdef int64_t av_rescale_rnd(
+#        int64_t a,
+#        int64_t b,
+#        int64_t c,
+#        int r # should be AVRounding, but then we can't use bitwise logic.
+#    )
 
-    cdef int64_t av_rescale_q_rnd(
-        int64_t a,
-        AVRational bq,
-        AVRational cq,
-        int r # should be AVRounding, but then we can't use bitwise logic.
-    )
+#    cdef int64_t av_rescale_q_rnd(
+#        int64_t a,
+#        AVRational bq,
+#        AVRational cq,
+#        int r # should be AVRounding, but then we can't use bitwise logic.
+#    )
 
-    cdef int64_t av_rescale(
-        int64_t a,
-        int64_t b,
-        int64_t c
-    )
+#    cdef int64_t av_rescale(
+#        int64_t a,
+#        int64_t b,
+#        int64_t c
+#    )
 
-    cdef char* av_strdup(char *s)
+#    cdef char* av_strdup(char *s)
 
     cdef int av_opt_set_int(
         void *obj,
@@ -117,11 +119,15 @@ cdef extern from "libavutil/pixdesc.h" nogil:
     # See: http://ffmpeg.org/doxygen/trunk/structAVComponentDescriptor.html
     cdef struct AVComponentDescriptor:
         # These are bitfields, but this should generate the right C anyways.
-        unsigned int plane
-        unsigned int step_minus1
-        unsigned int offset_plus1
-        unsigned int shift
-        unsigned int depth_minus1
+        int plane
+        int step
+        int offset
+        int shift
+        int depth
+#        unsigned int step_minus1
+#        unsigned int offset_plus1
+#        unsigned int shift
+#        unsigned int depth_minus1
 
     cdef enum AVPixFmtFlags:
         AV_PIX_FMT_FLAG_BE
@@ -137,12 +143,15 @@ cdef extern from "libavutil/pixdesc.h" nogil:
         uint8_t nb_components
         uint8_t log2_chroma_w
         uint8_t log2_chroma_h
-        uint8_t flags
+        uint64_t flags
         AVComponentDescriptor comp[4]
+        const char *alias
 
     cdef AVPixFmtDescriptor* av_pix_fmt_desc_get(AVPixelFormat pix_fmt)
     cdef AVPixFmtDescriptor* av_pix_fmt_desc_next(AVPixFmtDescriptor *prev)
-
+    cdef int av_get_bits_per_pixel(const AVPixFmtDescriptor *pixdesc)
+    cdef int av_get_padded_bits_per_pixel(const AVPixFmtDescriptor *pixdesc)
+    cdef int av_pix_fmt_count_planes(AVPixelFormat pix_fmt)
     cdef char * av_get_pix_fmt_name(AVPixelFormat pix_fmt)
     cdef AVPixelFormat av_get_pix_fmt(char* name)
 
@@ -168,12 +177,44 @@ cdef extern from "libavutil/channel_layout.h" nogil:
     cdef char* av_get_channel_description(uint64_t channel)
 
 
+cdef extern from "libavutil/fifo.h" nogil:
+    ctypedef struct AVFifoBuffer:
+        uint8_t *buffer
+        uint8_t *rptr
+        uint8_t *wptr
+        uint8_t *end
+        unsigned int rndx
+        unsigned int wndx
 
-
+    cdef AVFifoBuffer *av_fifo_alloc(unsigned int size)
+    cdef AVFifoBuffer *av_fifo_alloc_array(size_t nmemb, size_t size)
+    cdef void av_fifo_free(AVFifoBuffer *f)
+    cdef void av_fifo_freep(AVFifoBuffer **f)
+    cdef void av_fifo_reset(AVFifoBuffer *f)
+    cdef int  av_fifo_size(const AVFifoBuffer *f)
+    cdef int  av_fifo_space(const AVFifoBuffer *f)
+    cdef int  av_fifo_generic_read(AVFifoBuffer *f, void *dest, int buf_size, void (*func)(void*,void*,int))
+    cdef int  av_fifo_generic_write(AVFifoBuffer *f, void *dest, int buf_size, void (*func)(void*,void*,int))
+    cdef int  av_fifo_realloc(AVFifoBuffer *f, unsigned int size)
+    cdef int  av_fifo_grow(AVFifoBuffer *f, unsigned int additional_space)
+    cdef void av_fifo_drain(AVFifoBuffer *f, int size)
+cdef inline uint8_t *av_fifo_peek2(const AVFifoBuffer *f, int offs):
+    cdef uint8_t *ptr = f.rptr + offs
+    if ptr >= f.end:
+        ptr = f.buffer + (ptr-f.end)
+    elif ptr < f.buffer:
+        ptr = f.end - (f.buffer-ptr)
+    return ptr
 cdef extern from "libavutil/audio_fifo.h" nogil:
 
     cdef struct AVAudioFifo:
-        pass
+        AVFifoBuffer **buf
+        int            nb_buffers
+        int            nb_samples
+        int            allocated_samples
+        int            channels
+        AVSampleFormat sample_fmt
+        int            sample_size
 
     cdef void av_audio_fifo_free(AVAudioFifo *af)
 
@@ -194,20 +235,30 @@ cdef extern from "libavutil/audio_fifo.h" nogil:
         void **data,
         int nb_samples
     )
+    cdef int av_audio_fifo_peek(
+        AVAudioFifo *af,
+        void **data,
+        int nb_samples
+    )
+    cdef int av_audio_fifo_peek_at(
+        AVAudioFifo *af,
+        void **data,
+        int nb_samples,
+        int offset,
+    )
 
     cdef int av_audio_fifo_size(AVAudioFifo *af)
     cdef int av_audio_fifo_space (AVAudioFifo *af)
-
-
+    cdef void av_audio_fifo_reset(AVAudioFifo *af)
+    cdef int av_audio_fifo_drain(AVAudioFifo *af, int nb_samples)
+    cdef int av_audio_fifo_realloc(AVAudioFifo *af, int nb_samples)
 cdef extern from "stdarg.h" nogil:
-
     # For logging. Should really be in another PXD.
     ctypedef struct va_list:
         pass
 
 
 cdef extern from "Python.h" nogil:
-
     # For logging. See av/logging.pyx for an explanation.
     cdef int Py_AddPendingCall(void *, void *)
     void PyErr_PrintEx(int set_sys_last_vars)
@@ -216,9 +267,7 @@ cdef extern from "Python.h" nogil:
 
 
 cdef extern from "libavutil/opt.h" nogil:
-
     cdef enum AVOptionType:
-
         AV_OPT_TYPE_FLAGS
         AV_OPT_TYPE_INT
         AV_OPT_TYPE_INT64
@@ -227,19 +276,17 @@ cdef extern from "libavutil/opt.h" nogil:
         AV_OPT_TYPE_STRING
         AV_OPT_TYPE_RATIONAL
         AV_OPT_TYPE_BINARY
-        AV_OPT_TYPE_DICT
-        #AV_OPT_TYPE_UINT64 # since FFmpeg 3.3
+        #AV_OPT_TYPE_DICT # Missing from FFmpeg
         AV_OPT_TYPE_CONST
-        AV_OPT_TYPE_IMAGE_SIZE
-        AV_OPT_TYPE_PIXEL_FMT
-        AV_OPT_TYPE_SAMPLE_FMT
-        AV_OPT_TYPE_VIDEO_RATE
-        AV_OPT_TYPE_DURATION
-        AV_OPT_TYPE_COLOR
-        AV_OPT_TYPE_CHANNEL_LAYOUT
-        AV_OPT_TYPE_BOOL
+        #AV_OPT_TYPE_IMAGE_SIZE # Missing from LibAV
+        #AV_OPT_TYPE_PIXEL_FMT # Missing from LibAV
+        #AV_OPT_TYPE_SAMPLE_FMT # Missing from LibAV
+        #AV_OPT_TYPE_VIDEO_RATE # Missing from FFmpeg
+        #AV_OPT_TYPE_DURATION # Missing from FFmpeg
+        #AV_OPT_TYPE_COLOR # Missing from FFmpeg
+        #AV_OPT_TYPE_CHANNEL_LAYOUT # Missing from FFmpeg
 
-    cdef struct AVOption_default_val:
+    cdef union AVOption_default_val:
         int64_t i64
         double dbl
         const char *str
@@ -249,8 +296,8 @@ cdef extern from "libavutil/opt.h" nogil:
 
         const char *name
         const char *help
-        AVOptionType type
         int offset
+        AVOptionType type
 
         AVOption_default_val default_val
 
@@ -259,6 +306,7 @@ cdef extern from "libavutil/opt.h" nogil:
         int flags
         const char *unit
 
+    cdef const AVOption *av_opt_find(void *, const char*, const char*, int, int)
 
 cdef extern from "libavutil/log.h" nogil:
 
@@ -284,7 +332,7 @@ cdef extern from "libavutil/log.h" nogil:
         AVClassCategory category
         int parent_log_context_offset
 
-        AVOption *option
+        const AVOption *option
 
     int AV_LOG_QUIET
     int AV_LOG_PANIC
@@ -294,8 +342,6 @@ cdef extern from "libavutil/log.h" nogil:
     int AV_LOG_INFO
     int AV_LOG_VERBOSE
     int AV_LOG_DEBUG
-    int AV_LOG_TRACE
-    int AV_LOG_MAX_OFFSET
 
     # Send a log.
     void av_log(void *ptr, int level, const char *fmt, ...)
@@ -303,3 +349,7 @@ cdef extern from "libavutil/log.h" nogil:
     # Get the logs.
     ctypedef void(*av_log_callback)(void *, int, const char *, va_list)
     void av_log_set_callback (av_log_callback callback)
+
+cdef extern from "libavutil/frame.h" nogil:
+    cdef int64_t av_frame_get_best_effort_timestamp ( const AVFrame *frame )
+    cdef void    av_frame_set_best_effort_timestamp ( AVFrame *frame, int64_t val )
