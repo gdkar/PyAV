@@ -11,10 +11,10 @@ cdef class AudioPlane(Plane):
         # array of the AVFrame only sets the first element, and does not
         # even seem to calculate it properly.
         lib.av_samples_get_buffer_size(
-            <int*>&self.buffer_size,
+            < int * > & self.buffer_size,
             frame.nb_channels,
             frame.ptr.nb_samples,
-            <lib.AVSampleFormat>frame.ptr.format,
+            < lib.AVSampleFormat > frame.ptr.format,
             frame.align
         )
 

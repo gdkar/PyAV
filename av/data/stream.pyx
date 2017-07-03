@@ -2,7 +2,6 @@ cimport libav as lib
 
 cdef class DataStream(Stream):
 
-
     def __repr__(self):
         return '<av.%s #%d %s/%s at 0x%x>' % (
             self.__class__.__name__,
@@ -11,7 +10,6 @@ cdef class DataStream(Stream):
             self.name or '<nocodec>',
             id(self),
         )
-
 
     def encode(self, frame=None):
         pass

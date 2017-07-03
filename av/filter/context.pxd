@@ -3,10 +3,9 @@ from av.filter.filter cimport Filter
 from av.filter.graph cimport Graph
 
 
-
 cdef class FilterContext(object):
 
-    cdef lib.AVFilterContext *ptr
+    cdef lib.AVFilterContext * ptr
     cdef readonly Graph graph
     cdef readonly Filter filter
 
@@ -16,4 +15,4 @@ cdef class FilterContext(object):
     cdef bint inited
 
 
-cdef FilterContext wrap_filter_context(Graph graph, Filter filter, lib.AVFilterContext *ptr)
+cdef FilterContext wrap_filter_context(Graph graph, Filter filter, lib.AVFilterContext * ptr)

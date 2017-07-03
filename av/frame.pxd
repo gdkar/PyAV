@@ -5,7 +5,7 @@ from av.packet cimport Packet
 
 cdef class Frame(object):
 
-    cdef lib.AVFrame *ptr
+    cdef lib.AVFrame * ptr
 
     # We define our own time.
     cdef lib.AVRational _time_base

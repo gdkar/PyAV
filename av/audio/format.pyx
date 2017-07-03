@@ -24,7 +24,7 @@ cdef class AudioFormat(object):
 
         cdef lib.AVSampleFormat sample_fmt
         if isinstance(name, AudioFormat):
-            sample_fmt = (<AudioFormat>name).sample_fmt
+            sample_fmt = ( < AudioFormat > name).sample_fmt
         else:
             sample_fmt = lib.av_get_sample_fmt(name)
 
@@ -46,8 +46,9 @@ cdef class AudioFormat(object):
         's16p'
 
         """
+
         def __get__(self):
-            return <str>lib.av_get_sample_fmt_name(self.sample_fmt)
+            return < str > lib.av_get_sample_fmt_name(self.sample_fmt)
 
     property bytes:
         """Number of bytes per sample.
@@ -56,6 +57,7 @@ cdef class AudioFormat(object):
         2
 
         """
+
         def __get__(self):
             return lib.av_get_bytes_per_sample(self.sample_fmt)
 
@@ -66,6 +68,7 @@ cdef class AudioFormat(object):
         16
 
         """
+
         def __get__(self):
             return lib.av_get_bytes_per_sample(self.sample_fmt) << 3
 
@@ -75,6 +78,7 @@ cdef class AudioFormat(object):
         Strictly opposite of :attr:`is_packed`.
 
         """
+
         def __get__(self):
             return bool(lib.av_sample_fmt_is_planar(self.sample_fmt))
 
@@ -84,6 +88,7 @@ cdef class AudioFormat(object):
         Strictly opposite of :attr:`is_planar`.
 
         """
+
         def __get__(self):
             return not lib.av_sample_fmt_is_planar(self.sample_fmt)
 
@@ -97,6 +102,7 @@ cdef class AudioFormat(object):
         True
 
         """
+
         def __get__(self):
             if self.is_planar:
                 return self
@@ -112,6 +118,7 @@ cdef class AudioFormat(object):
         True
 
         """
+
         def __get__(self):
             if self.is_packed:
                 return self
@@ -123,6 +130,7 @@ cdef class AudioFormat(object):
         :raises ValueError: when planar, since there are no such containers.
 
         """
+
         def __get__(self):
 
             if self.is_planar:

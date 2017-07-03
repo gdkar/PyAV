@@ -3,7 +3,7 @@ cimport libav as lib
 
 cdef object _cinit_sentinel = object()
 
-cdef Option wrap_option(tuple choices, lib.AVOption *ptr):
+cdef Option wrap_option(tuple choices, lib.AVOption * ptr):
     if ptr == NULL:
         return None
     cdef Option obj = Option(_cinit_sentinel)
@@ -23,7 +23,8 @@ cdef dict _TYPE_NAMES = {
     lib.AV_OPT_TYPE_RATIONAL: 'RATIONAL',
     lib.AV_OPT_TYPE_BINARY: 'BINARY',
     lib.AV_OPT_TYPE_DICT: 'DICT',
-    #lib.AV_OPT_TYPE_UINT64: 'UINT64', # Added recently, and not yet used AFAICT.
+    # lib.AV_OPT_TYPE_UINT64: 'UINT64', # Added recently, and not yet used
+    # AFAICT.
     lib.AV_OPT_TYPE_CONST: 'CONST',
     lib.AV_OPT_TYPE_IMAGE_SIZE: 'IMAGE_SIZE',
     lib.AV_OPT_TYPE_PIXEL_FMT: 'PIXEL_FMT',
@@ -55,6 +56,7 @@ cdef class Option(object):
         This can be used to find aliases of an option.
         Options in a particular descriptor with the same offset are aliases.
         """
+
         def __get__(self):
             return self.ptr.offset
 
@@ -95,7 +97,7 @@ cdef class Option(object):
         )
 
 
-cdef OptionChoice wrap_option_choice(lib.AVOption *ptr):
+cdef OptionChoice wrap_option_choice(lib.AVOption * ptr):
     if ptr == NULL:
         return None
     cdef OptionChoice obj = OptionChoice(_cinit_sentinel)

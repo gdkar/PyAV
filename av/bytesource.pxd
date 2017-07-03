@@ -8,7 +8,7 @@ cdef class ByteSource(object):
     cdef bint has_view
     cdef Py_buffer view
 
-    cdef unsigned char *ptr
+    cdef unsigned char * ptr
     cdef size_t length
 
 cdef ByteSource bytesource(object, bint allow_none=*)

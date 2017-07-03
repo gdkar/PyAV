@@ -21,19 +21,20 @@ def main():
         print('git commit:', av._core.pyav_commit)
 
         by_config = {}
-        for libname, config in sorted(av._core.versions.iteritems()):
+        for libname, config in sorted(av._core.versions.items()):
             version = config['version']
             if version[0] >= 0:
                 by_config.setdefault(
                     (config['configuration'], config['license']),
                     []
                 ).append((libname, config))
-        for (config, license), libs in sorted(by_config.iteritems()):
+        for (config, license), libs in sorted(by_config.items()):
             print('library configuration:', config)
             print('library license:', license)
             for libname, config in libs:
                 version = config['version']
-                print('%-13s %3d.%3d.%3d' % (libname, version[0], version[1], version[2]))
+                print('%-13s %3d.%3d.%3d' %
+                      (libname, version[0], version[1], version[2]))
 
     if args.codecs:
         from av.codec.codec import dump_codecs

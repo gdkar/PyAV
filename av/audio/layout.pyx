@@ -33,7 +33,7 @@ default_layouts[12] = 0x0FFF
 default_layouts[13] = 0x1FFF
 default_layouts[14] = 0x3FFF
 default_layouts[15] = 0x7FFF
-default_layouts[16] = 0xFFFF # FFmpeg has one here.
+default_layouts[16] = 0xFFFF  # FFmpeg has one here.
 
 
 # These are the descriptions as given by FFmpeg; Libav does not have them.
@@ -92,7 +92,8 @@ cdef class AudioLayout(object):
 
     cdef _init(self, uint64_t layout):
         self.layout = layout
-        self.nb_channels = lib.av_get_channel_layout_nb_channels(layout) # This just counts bits.
+        # This just counts bits.
+        self.nb_channels = lib.av_get_channel_layout_nb_channels(layout)
         self.channels = PyTuple_New(self.nb_channels)
         cdef AudioChannel c
         for i in range(self.nb_channels):
@@ -108,27 +109,31 @@ cdef class AudioLayout(object):
 
     property name:
         """The canonical name of the audio layout."""
+
         def __get__(self):
             cdef char out[32]
             # Passing 0 as number of channels... fix this later?
             lib.av_get_channel_layout_string(out, 32, 0, self.layout)
-            return <str>out
+            return < str > out
 
 
 cdef class AudioChannel(object):
 
     def __cinit__(self, AudioLayout layout, int index):
-        self.channel = lib.av_channel_layout_extract_channel(layout.layout, index)
+        self.channel = lib.av_channel_layout_extract_channel(
+            layout.layout, index)
 
     def __repr__(self):
         return '<av.%s %r (%s)>' % (self.__class__.__name__, self.name, self.description)
 
     property name:
         """The canonical name of the audio channel."""
+
         def __get__(self):
             return lib.av_get_channel_name(self.channel)
 
     property description:
         """A human description of the audio channel."""
+
         def __get__(self):
             return channel_descriptions.get(self.name)

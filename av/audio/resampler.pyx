@@ -24,15 +24,17 @@ cdef class AudioResampler(object):
 
     def __cinit__(self, format=None, layout=None, rate=None):
         if format is not None:
-            self.format = format if isinstance(format, AudioFormat) else AudioFormat(format)
+            self.format = format if isinstance(
+                format, AudioFormat) else AudioFormat(format)
         if layout is not None:
-            self.layout = layout if isinstance(layout, AudioLayout) else AudioLayout(layout)
+            self.layout = layout if isinstance(
+                layout, AudioLayout) else AudioLayout(layout)
         self.rate = int(rate) if rate else 0
 
     def __dealloc__(self):
         if self.ptr:
             lib.swr_close(self.ptr)
-        lib.swr_free(&self.ptr)
+        lib.swr_free(& self.ptr)
 
     cpdef resample(self, AudioFrame frame):
         """resample(frame)
@@ -54,7 +56,8 @@ cdef class AudioResampler(object):
         if not self.ptr:
 
             if not frame:
-                raise ValueError('Cannot flush AudioResampler before it is used.')
+                raise ValueError(
+                    'Cannot flush AudioResampler before it is used.')
 
             # Hold onto a copy of the attributes of the first frame to populate
             # output frames with.
@@ -65,26 +68,27 @@ cdef class AudioResampler(object):
             # Set some default descriptors.
             self.format = self.format or self.template.format
             self.layout = self.layout or self.template.layout
-            self.rate   = self.rate   or self.template.ptr.sample_rate
+            self.rate = self.rate or self.template.ptr.sample_rate
 
             # Check if there is actually work to do.
             if (
                 self.template.format.sample_fmt == self.format.sample_fmt and
-                self.template.layout.layout     == self.layout.layout and
-                self.template.ptr.sample_rate   == self.rate
+                self.template.layout.layout == self.layout.layout and
+                self.template.ptr.sample_rate == self.rate
             ):
                 self.is_passthrough = True
                 return frame
 
             # Figure out our time bases.
             if frame._time_base.num and frame.ptr.sample_rate:
-                self.pts_per_sample_in  = frame._time_base.den / float(frame._time_base.num)
+                self.pts_per_sample_in = frame._time_base.den / \
+                    float(frame._time_base.num)
                 self.pts_per_sample_in /= self.template.ptr.sample_rate
 
-                # We will only provide outgoing PTS if the time_base is trivial.
+                # We will only provide outgoing PTS if the time_base is
+                # trivial.
                 if frame._time_base.num == 1 and frame._time_base.den == frame.ptr.sample_rate:
                     self.simple_pts_out = True
-
 
             self.ptr = lib.swr_alloc()
             if not self.ptr:
@@ -92,12 +96,16 @@ cdef class AudioResampler(object):
 
             # Configure it!
             try:
-                err_check(lib.av_opt_set_int(self.ptr, 'in_sample_fmt',      <int>self.template.format.sample_fmt, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_sample_fmt',     <int>self.format.sample_fmt, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'in_channel_layout',  self.template.layout.layout, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_channel_layout', self.layout.layout, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'in_sample_rate',     self.template.ptr.sample_rate, 0))
-                err_check(lib.av_opt_set_int(self.ptr, 'out_sample_rate',    self.rate, 0))
+                err_check(lib.av_opt_set_int(self.ptr, 'in_sample_fmt',      < int > self.template.format.sample_fmt, 0))
+                err_check(lib.av_opt_set_int(self.ptr, 'out_sample_fmt',     < int > self.format.sample_fmt, 0))
+                err_check(lib.av_opt_set_int(
+                    self.ptr, 'in_channel_layout',  self.template.layout.layout, 0))
+                err_check(lib.av_opt_set_int(
+                    self.ptr, 'out_channel_layout', self.layout.layout, 0))
+                err_check(lib.av_opt_set_int(
+                    self.ptr, 'in_sample_rate',     self.template.ptr.sample_rate, 0))
+                err_check(lib.av_opt_set_int(
+                    self.ptr, 'out_sample_rate',    self.rate, 0))
                 err_check(lib.swr_init(self.ptr))
             except:
                 self.ptr = NULL
@@ -107,18 +115,19 @@ cdef class AudioResampler(object):
 
             # Assert the settings are the same on consecutive frames.
             if (
-                frame.ptr.format         != self.template.format.sample_fmt or
+                frame.ptr.format != self.template.format.sample_fmt or
                 frame.ptr.channel_layout != self.template.layout.layout or
-                frame.ptr.sample_rate    != self.template.ptr.sample_rate
+                frame.ptr.sample_rate != self.template.ptr.sample_rate
             ):
                 raise ValueError('Frame does not match AudioResampler setup.')
 
         # Assert that the PTS are what we expect.
         cdef uint64_t expected_pts
         if frame is not None and frame.ptr.pts != lib.AV_NOPTS_VALUE:
-            expected_pts = <uint64_t>(self.pts_per_sample_in * self.samples_in)
+            expected_pts = <uint64_t > (self.pts_per_sample_in * self.samples_in)
             if frame.ptr.pts != expected_pts:
-                raise ValueError('Input frame pts %d != expected %d; fix or set to None.' % (frame.ptr.pts, expected_pts))
+                raise ValueError('Input frame pts %d != expected %d; fix or set to None.' % (
+                    frame.ptr.pts, expected_pts))
             self.samples_in += frame.ptr.nb_samples
 
         # The example "loop" as given in the FFmpeg documentation looks like:
@@ -158,7 +167,7 @@ cdef class AudioResampler(object):
             self.format.sample_fmt,
             self.layout.layout,
             output_nb_samples,
-            1, # Align?
+            1,  # Align?
         )
 
         output.ptr.nb_samples = err_check(lib.swr_convert(

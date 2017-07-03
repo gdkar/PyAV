@@ -12,15 +12,15 @@ import sys
 
 
 # Levels.
-QUIET = lib.AV_LOG_QUIET # -8
-PANIC = lib.AV_LOG_PANIC # 0
-FATAL = lib.AV_LOG_FATAL # 8
+QUIET = lib.AV_LOG_QUIET  # -8
+PANIC = lib.AV_LOG_PANIC  # 0
+FATAL = lib.AV_LOG_FATAL  # 8
 ERROR = lib.AV_LOG_ERROR
 WARNING = lib.AV_LOG_WARNING
 INFO = lib.AV_LOG_INFO
 VERBOSE = lib.AV_LOG_VERBOSE
 DEBUG = lib.AV_LOG_DEBUG
-#TRACE = lib.AV_LOG_TRACE # 56 # Does not exist in ffmpeg <= 2.2.4.
+# TRACE = lib.AV_LOG_TRACE # 56 # Does not exist in ffmpeg <= 2.2.4.
 
 
 # Map from AV levels to logging levels.
@@ -29,9 +29,9 @@ level_map = {
     lib.AV_LOG_PANIC: 50,   # logging.CRITICAL
     lib.AV_LOG_FATAL: 50,   # logging.CRITICAL
     lib.AV_LOG_ERROR: 40,   # logging.ERROR
-    lib.AV_LOG_WARNING: 30, # logging.WARNING
+    lib.AV_LOG_WARNING: 30,  # logging.WARNING
     lib.AV_LOG_INFO: 20,    # logging.INFO
-    lib.AV_LOG_VERBOSE: 10, # logging.DEBUG
+    lib.AV_LOG_VERBOSE: 10,  # logging.DEBUG
     lib.AV_LOG_DEBUG: 5,    # This is below any logging constant.
 }
 
@@ -48,6 +48,7 @@ logging.getLogger('libav').setLevel(logging.WARNING)
 def get_level():
     """Return current logging threshold. See :func:`set_level`."""
     return _level_threshold
+
 
 def set_level(int level):
     """set_level(level)
@@ -76,9 +77,11 @@ def set_level(int level):
 
 cdef bint _print_after_shutdown = False
 
+
 def get_print_after_shutdown():
     """Will logging continue to ``stderr`` after Python shutdown?"""
     return _print_after_shutdown
+
 
 def set_print_after_shutdown(v):
     """Set if logging should continue to ``stderr`` after Python shutdown."""
@@ -88,9 +91,11 @@ def set_print_after_shutdown(v):
 
 cdef bint _skip_repeated = True
 
+
 def get_skip_repeated():
     """Will identical logs be emitted?"""
     return _skip_repeated
+
 
 def set_skip_repeated(v):
     """Set if identical logs will be emitted"""
@@ -114,13 +119,13 @@ cdef pythread.PyThread_type_lock _queue_lock = pythread.PyThread_allocate_lock()
 cdef pythread.PyThread_type_lock _skip_lock = pythread.PyThread_allocate_lock()
 
 cdef struct _Record:
-    const char *name
+    const char * name
     int level
     char message[1024]
-    _Record *next
+    _Record * next
 
-cdef _Record *_queue_start = NULL
-cdef _Record *_queue_end = NULL
+cdef _Record * _queue_start = NULL
+cdef _Record * _queue_end = NULL
 cdef int _queue_size
 cdef bint _print_queue_size = False
 
@@ -137,11 +142,12 @@ cdef _get_last_error():
     """Get the (name, level, message) for the last error log."""
     if _error_count:
         # Manual locking FTW!
-        if pythread.PyThread_acquire_lock(_skip_lock, 1): # 1 -> wait
+        if pythread.PyThread_acquire_lock(_skip_lock, 1):  # 1 -> wait
             res = _error_count, (
                 'libav.' + _last_error_record.name if _last_error_record.name else '',
                 _last_error_record.level,
-                _last_error_record.message if _last_error_record.message[0] else '',
+                _last_error_record.message if _last_error_record.message[
+                    0] else '',
             )
             pythread.PyThread_release_lock(_skip_lock)
         return res
@@ -149,14 +155,14 @@ cdef _get_last_error():
         return 0, None
 
 
-cdef bint _push_record(_Record *src) nogil:
+cdef bint _push_record(_Record * src) nogil:
     """Copies the given record, and puts it onto the queue."""
 
     global _queue_start, _queue_end, _queue_size
-    if not pythread.PyThread_acquire_lock(_queue_lock, 1): # 1 -> wait
+    if not pythread.PyThread_acquire_lock(_queue_lock, 1):  # 1 -> wait
         return False
 
-    cdef _Record *record = <_Record*>malloc(sizeof(_Record))
+    cdef _Record * record = <_Record * >malloc(sizeof(_Record))
     memcpy(record, src, sizeof(_Record))
     record.next = NULL
 
@@ -177,14 +183,14 @@ cdef bint _push_record(_Record *src) nogil:
     pythread.PyThread_release_lock(_queue_lock)
     return True
 
-cdef bint _pop_record(_Record *dst):
+cdef bint _pop_record(_Record * dst):
     """Copies the first record on the queue to the given pointer."""
 
     global _queue_start, _queue_end, _queue_size
-    if not pythread.PyThread_acquire_lock(_queue_lock, 1): # 1 -> wait
+    if not pythread.PyThread_acquire_lock(_queue_lock, 1):  # 1 -> wait
         return False
 
-    cdef _Record *record = NULL
+    cdef _Record * record = NULL
     if _queue_start:
         record = _queue_start
         _queue_start = record.next
@@ -205,7 +211,7 @@ cdef bint _pop_record(_Record *dst):
     return True
 
 
-cdef void log_callback(void *ptr, int level, const char *format, lib.va_list args) nogil:
+cdef void log_callback(void * ptr, int level, const char * format, lib.va_list args) nogil:
 
     # We need to do everything with the `void *ptr` in this function, since
     # the object it represents may be freed by the time the async_log_callback
@@ -223,8 +229,8 @@ cdef void log_callback(void *ptr, int level, const char *format, lib.va_list arg
     lib.vsnprintf(record.message, 1023, format, args)
 
     # Get the name.
-    cdef lib.AVClass *cls = (<lib.AVClass**>ptr)[0] if ptr else NULL
-    cdef char *item_name = NULL;
+    cdef lib.AVClass * cls = ( < lib.AVClass**>ptr)[0] if ptr else NULL
+    cdef char * item_name = NULL
     if cls and cls.item_name:
         # I'm not 100% on this, but this should be static, and so
         # it doesn't matter if the AVClass that returned it vanishes or not.
@@ -237,7 +243,7 @@ cdef void log_callback(void *ptr, int level, const char *format, lib.va_list arg
 
     # Skip messages which are identical to the previous.
     cdef bint is_repeated = False
-    if pythread.PyThread_acquire_lock(_skip_lock, 1): # 1 -> wait
+    if pythread.PyThread_acquire_lock(_skip_lock, 1):  # 1 -> wait
 
         if is_interesting:
 
@@ -255,16 +261,17 @@ cdef void log_callback(void *ptr, int level, const char *format, lib.va_list arg
                 # We are both abusing the _last_record (assuming that the next message
                 # won't also be about repeated messages), but also assuming that putting
                 # the message onto the queue will get it seen.
-                lib.snprintf(_last_record.message, 1023, "last message repeated %d times", _skip_count)
-                _push_record(&_last_record)
+                lib.snprintf(_last_record.message, 1023,
+                             "last message repeated %d times", _skip_count)
+                _push_record(& _last_record)
                 _skip_count = 0
 
-            memcpy(&_last_record, &record, sizeof(_Record))
+            memcpy( & _last_record, & record, sizeof(_Record))
 
         # Hold onto errors for err_check.
         if level == lib.AV_LOG_ERROR:
             _error_count += 1
-            memcpy(&_last_error_record, &record, sizeof(_Record))
+            memcpy( & _last_error_record, & record, sizeof(_Record))
 
         pythread.PyThread_release_lock(_skip_lock)
 
@@ -273,20 +280,19 @@ cdef void log_callback(void *ptr, int level, const char *format, lib.va_list arg
         if is_repeated:
             return
 
-
-    if inited and _push_record(&record):
+    if inited and _push_record(& record):
         # Schedule this to be called in the main Python thread. This does not always
         # work, so a few logs might get delayed.
-        lib.Py_AddPendingCall(<void*>async_log_callback, NULL)
+        lib.Py_AddPendingCall(< void*>async_log_callback, NULL)
     else:
         # After Python shutdown, or the lock did not acquire.
         fprintf(stderr, "av.logging: %s[%d]: %s",
-            item_name, level, record.message
-        )
+                item_name, level, record.message
+                )
         return
 
 
-cdef int async_log_callback(void *arg) except -1:
+cdef int async_log_callback(void * arg) except -1:
 
     cdef int level
     cdef str logger_name
@@ -295,7 +301,7 @@ cdef int async_log_callback(void *arg) except -1:
     cdef _Record record
     cdef bint inited = lib.Py_IsInitialized()
 
-    while _pop_record(&record):
+    while _pop_record(& record):
 
         if inited:
             try:
@@ -306,17 +312,16 @@ cdef int async_log_callback(void *arg) except -1:
                 logger.log(level, record.message.strip())
             except Exception as e:
                 fprintf(stderr, "av.logging: exception while handling %s[%d]: %s",
-                    record.name, record.level, record.message
-                )
+                        record.name, record.level, record.message
+                        )
                 # For some reason lib.PyErr_PrintEx(0) won't work.
                 exc, type_, tb = sys.exc_info()
                 lib.PyErr_Display(exc, type_, tb)
 
         elif _print_after_shutdown:
             fprintf(stderr, "av.logging: %s[%d]: %s",
-                record.name, record.level, record.message
-            )
-
+                    record.name, record.level, record.message
+                    )
 
     return 0
 

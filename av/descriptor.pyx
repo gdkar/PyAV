@@ -5,7 +5,7 @@ from .option cimport Option, OptionChoice, wrap_option, wrap_option_choice
 
 cdef object _cinit_sentinel = object()
 
-cdef Descriptor wrap_avclass(lib.AVClass *ptr):
+cdef Descriptor wrap_avclass(lib.AVClass * ptr):
     if ptr == NULL:
         return None
     cdef Descriptor obj = Descriptor(_cinit_sentinel)
@@ -20,12 +20,13 @@ cdef class Descriptor(object):
             raise RuntimeError('Cannot construct av.Descriptor')
 
     property name:
-        def __get__(self): return self.ptr.class_name if self.ptr.class_name else None
+        def __get__(
+            self): return self.ptr.class_name if self.ptr.class_name else None
 
     property options:
         def __get__(self):
-            cdef lib.AVOption *ptr
-            cdef lib.AVOption *choice_ptr
+            cdef lib.AVOption * ptr
+            cdef lib.AVOption * choice_ptr
             cdef Option option
             cdef OptionChoice option_choice
             if self._options is None:
@@ -36,7 +37,8 @@ cdef class Descriptor(object):
                         ptr += 1
                         continue
                     choices = []
-                    if ptr.unit != NULL:  # option has choices (matching const options)
+                    # option has choices (matching const options)
+                    if ptr.unit != NULL:
                         choice_ptr = self.ptr.option
                         while choice_ptr != NULL and choice_ptr.name != NULL:
                             if choice_ptr.type != lib.AV_OPT_TYPE_CONST or choice_ptr.unit != ptr.unit:

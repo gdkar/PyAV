@@ -1,6 +1,6 @@
 from av.option import Option
 
-from common import *
+from .common import *
 
 
 class TestOptions(TestCase):

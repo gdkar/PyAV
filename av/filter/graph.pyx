@@ -22,7 +22,7 @@ cdef class Graph(object):
     def __dealloc__(self):
         if self.ptr:
             # This frees the graph, filter contexts, links, etc..
-            lib.avfilter_graph_free(&self.ptr)
+            lib.avfilter_graph_free( & self.ptr)
 
     cdef str _get_unique_name(self, str name):
         count = self._name_counts.get(name, 0)
@@ -81,7 +81,7 @@ cdef class Graph(object):
 
         cdef str name = self._get_unique_name(kwargs.pop('name', None) or cy_filter.name)
 
-        cdef lib.AVFilterContext *ptr = lib.avfilter_graph_alloc_filter(self.ptr, cy_filter.ptr, name)
+        cdef lib.AVFilterContext * ptr = lib.avfilter_graph_alloc_filter(self.ptr, cy_filter.ptr, name)
         if not ptr:
             raise RuntimeError("Could not allocate AVFilterContext")
 
@@ -98,20 +98,20 @@ cdef class Graph(object):
         return ctx
 
     cdef _register_context(self, FilterContext ctx):
-        self._context_by_ptr[<long>ctx.ptr] = ctx
+        self._context_by_ptr[ < long > ctx.ptr] = ctx
         self._context_by_name[ctx.ptr.name] = ctx
         self._context_by_type.setdefault(ctx.filter.ptr.name, []).append(ctx)
 
     cdef _auto_register(self):
         cdef int i
-        cdef lib.AVFilterContext *c_ctx
+        cdef lib.AVFilterContext * c_ctx
         cdef Filter filter_
         cdef FilterContext py_ctx
         # We assume that filters are never removed from the graph. At this
         # point we don't expose that in the API, so we should be okay...
         for i in range(self._nb_filters_seen, self.ptr.nb_filters):
             c_ctx = self.ptr.filters[i]
-            if <long>c_ctx in self._context_by_ptr:
+            if < long > c_ctx in self._context_by_ptr:
                 continue
             filter_ = wrap_filter(c_ctx.filter)
             py_ctx = wrap_filter_context(self, filter_, c_ctx)
@@ -151,7 +151,8 @@ cdef class Graph(object):
             raise ValueError('can only push VideoFrame', type(frame))
 
         if len(contexts) != 1:
-            raise ValueError('can only auto-push with single buffer; found %s' % len(contexts))
+            raise ValueError(
+                'can only auto-push with single buffer; found %s' % len(contexts))
 
         contexts[0].push(frame)
 
@@ -162,6 +163,7 @@ cdef class Graph(object):
 
         nsinks = len(vsinks) + len(asinks)
         if nsinks != 1:
-            raise ValueError('can only auto-pull with single sink; found %s' % nsinks)
+            raise ValueError(
+                'can only auto-pull with single sink; found %s' % nsinks)
 
         return (vsinks or asinks)[0].pull()

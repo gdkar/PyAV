@@ -7,7 +7,7 @@ from av.audio.frame cimport AudioFrame
 
 cdef class AudioFifo:
 
-    cdef lib.AVAudioFifo *ptr
+    cdef lib.AVAudioFifo * ptr
 
     cdef AudioFrame template
 

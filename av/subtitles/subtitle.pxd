@@ -18,7 +18,7 @@ cdef class SubtitleSet(object):
 cdef class Subtitle(object):
 
     cdef SubtitleProxy proxy
-    cdef lib.AVSubtitleRect *ptr
+    cdef lib.AVSubtitleRect * ptr
     cdef readonly bytes type
 
 cdef class TextSubtitle(Subtitle):
@@ -36,4 +36,4 @@ cdef class BitmapSubtitlePlane(object):
     cdef readonly BitmapSubtitle subtitle
     cdef readonly int index
     cdef readonly long buffer_size
-    cdef void *_buffer
+    cdef void * _buffer

@@ -32,7 +32,7 @@ cdef class AudioFrame(Frame):
 
         self.align = align
         self.ptr.nb_samples = nb_samples
-        self.ptr.format = <int>format
+        self.ptr.format = <int > format
         self.ptr.channel_layout = layout
 
         # HACK: It really sucks to do this twice.
@@ -42,7 +42,7 @@ cdef class AudioFrame(Frame):
         if self.layout.channels and nb_samples:
 
             # Cleanup the old buffer.
-            lib.av_freep(&self._buffer)
+            lib.av_freep( & self._buffer)
 
             # Get a new one.
             self._buffer_size = err_check(lib.av_samples_get_buffer_size(
@@ -52,7 +52,7 @@ cdef class AudioFrame(Frame):
                 format,
                 align
             ))
-            self._buffer = <uint8_t *>lib.av_malloc(self._buffer_size)
+            self._buffer = <uint8_t * >lib.av_malloc(self._buffer_size)
             if not self._buffer:
                 raise MemoryError("cannot allocate AudioFrame buffer")
 
@@ -60,7 +60,7 @@ cdef class AudioFrame(Frame):
             err_check(lib.avcodec_fill_audio_frame(
                 self.ptr,
                 len(self.layout.channels),
-                <lib.AVSampleFormat>self.ptr.format,
+                < lib.AVSampleFormat > self.ptr.format,
                 self._buffer,
                 self._buffer_size,
                 self.align
@@ -69,14 +69,14 @@ cdef class AudioFrame(Frame):
             self._init_planes(AudioPlane)
 
     def __dealloc__(self):
-        lib.av_freep(&self._buffer)
+        lib.av_freep( & self._buffer)
 
     cdef _recalc_linesize(self):
         lib.av_samples_get_buffer_size(
             self.ptr.linesize,
             len(self.layout.channels),
             self.ptr.nb_samples,
-            <lib.AVSampleFormat>self.ptr.format,
+            < lib.AVSampleFormat > self.ptr.format,
             self.align
         )
         # We need to reset the buffer_size on the AudioPlane/s. This is
@@ -85,9 +85,10 @@ cdef class AudioFrame(Frame):
 
     cdef _init_user_attributes(self):
         self.layout = get_audio_layout(0, self.ptr.channel_layout)
-        self.format = get_audio_format(<lib.AVSampleFormat>self.ptr.format)
-        self.nb_channels = lib.av_get_channel_layout_nb_channels(self.ptr.channel_layout)
-        self.nb_planes = self.nb_channels if lib.av_sample_fmt_is_planar(<lib.AVSampleFormat>self.ptr.format) else 1
+        self.format = get_audio_format( < lib.AVSampleFormat > self.ptr.format)
+        self.nb_channels = lib.av_get_channel_layout_nb_channels(
+            self.ptr.channel_layout)
+        self.nb_planes = self.nb_channels if lib.av_sample_fmt_is_planar( < lib.AVSampleFormat > self.ptr.format) else 1
         self._init_planes(AudioPlane)
 
     def __repr__(self):
@@ -103,19 +104,23 @@ cdef class AudioFrame(Frame):
 
     property samples:
         """Number of audio samples (per channel) """
+
         def __get__(self):
             return self.ptr.nb_samples
 
     property sample_rate:
         """Sample rate of the audio data. """
+
         def __get__(self):
             return self.ptr.sample_rate
+
         def __set__(self, value):
             self.ptr.sample_rate = value
 
     property rate:
         def __get__(self):
             return self.ptr.sample_rate
+
         def __set__(self, value):
             self.ptr.sample_rate = value
 
@@ -124,14 +129,14 @@ cdef class AudioFrame(Frame):
         Any ``**kwargs`` are passed to :meth:`AudioFrame.reformat`.
         """
 
-
         # map avcodec type to numpy type
         try:
             dtype = {
-                's16p':'<i2'
+                's16p': '<i2'
             }[self.format.name]
         except:
-            raise AssertionError("Don't know how to convert data type.", self.format.name)
+            raise AssertionError(
+                "Don't know how to convert data type.", self.format.name)
 
         # convert and return data
         import numpy as np

@@ -5,7 +5,7 @@ from av.descriptor cimport wrap_avclass
 
 cdef object _cinit_bypass_sentinel = object()
 
-cdef ContainerFormat build_container_format(lib.AVInputFormat* iptr, lib.AVOutputFormat* optr):
+cdef ContainerFormat build_container_format(lib.AVInputFormat * iptr, lib.AVOutputFormat * optr):
     if not iptr and not optr:
         raise ValueError('needs input format or output format')
     cdef ContainerFormat format = ContainerFormat.__new__(ContainerFormat, _cinit_bypass_sentinel)
@@ -64,6 +64,7 @@ cdef class ContainerFormat(object):
 
     property input:
         """An input-only view of this format."""
+
         def __get__(self):
             if self.iptr == NULL:
                 return None
@@ -74,6 +75,7 @@ cdef class ContainerFormat(object):
 
     property output:
         """An output-only view of this format."""
+
         def __get__(self):
             if self.optr == NULL:
                 return None
@@ -108,14 +110,14 @@ cdef class ContainerFormat(object):
 
 formats_available = set()
 
-cdef lib.AVInputFormat *iptr = NULL
+cdef lib.AVInputFormat * iptr = NULL
 while True:
     iptr = lib.av_iformat_next(iptr)
     if not iptr:
         break
     formats_available.add(iptr.name)
 
-cdef lib.AVOutputFormat *optr = NULL
+cdef lib.AVOutputFormat * optr = NULL
 while True:
     optr = lib.av_oformat_next(optr)
     if not optr:

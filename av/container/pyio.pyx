@@ -6,17 +6,17 @@ from av.container.core cimport ContainerProxy
 from av.utils cimport stash_exception
 
 
-cdef int pyio_read(void *opaque, uint8_t *buf, int buf_size) nogil:
+cdef int pyio_read(void * opaque, uint8_t * buf, int buf_size) nogil:
     with gil:
         return pyio_read_gil(opaque, buf, buf_size)
 
-cdef int pyio_read_gil(void *opaque, uint8_t *buf, int buf_size):
+cdef int pyio_read_gil(void * opaque, uint8_t * buf, int buf_size):
     cdef ContainerProxy self
     cdef bytes res
     try:
-        self = <ContainerProxy>opaque
+        self = <ContainerProxy > opaque
         res = self.fread(buf_size)
-        memcpy(buf, <void*><char*>res, len(res))
+        memcpy(buf, < void * > < char * >res, len(res))
         self.pos += len(res)
         if not res:
             return lib.AVERROR_EOF
@@ -25,16 +25,16 @@ cdef int pyio_read_gil(void *opaque, uint8_t *buf, int buf_size):
         return stash_exception()
 
 
-cdef int pyio_write(void *opaque, uint8_t *buf, int buf_size) nogil:
+cdef int pyio_write(void * opaque, uint8_t * buf, int buf_size) nogil:
     with gil:
         return pyio_write_gil(opaque, buf, buf_size)
 
-cdef int pyio_write_gil(void *opaque, uint8_t *buf, int buf_size):
+cdef int pyio_write_gil(void * opaque, uint8_t * buf, int buf_size):
     cdef ContainerProxy self
     cdef bytes bytes_to_write
     cdef int bytes_written
     try:
-        self = <ContainerProxy>opaque
+        self = <ContainerProxy > opaque
         bytes_to_write = buf[:buf_size]
         ret_value = self.fwrite(bytes_to_write)
         bytes_written = ret_value if isinstance(ret_value, int) else buf_size
@@ -44,7 +44,7 @@ cdef int pyio_write_gil(void *opaque, uint8_t *buf, int buf_size):
         return stash_exception()
 
 
-cdef int64_t pyio_seek(void *opaque, int64_t offset, int whence) nogil:
+cdef int64_t pyio_seek(void * opaque, int64_t offset, int whence) nogil:
     # Seek takes the standard flags, but also a ad-hoc one which means that
     # the library wants to know how large the file is. We are generally
     # allowed to ignore this.
@@ -53,10 +53,10 @@ cdef int64_t pyio_seek(void *opaque, int64_t offset, int whence) nogil:
     with gil:
         return pyio_seek_gil(opaque, offset, whence)
 
-cdef int64_t pyio_seek_gil(void *opaque, int64_t offset, int whence):
+cdef int64_t pyio_seek_gil(void * opaque, int64_t offset, int whence):
     cdef ContainerProxy self
     try:
-        self = <ContainerProxy>opaque
+        self = <ContainerProxy > opaque
         res = self.fseek(offset, whence)
 
         # Track the position for the user.

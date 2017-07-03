@@ -42,28 +42,29 @@ cdef class VideoFrame(Frame):
             self.ptr.height = height
             self.ptr.format = format
 
-
             if width and height:
 
                 # Cleanup the old buffer.
-                lib.av_freep(&self._buffer)
+                lib.av_freep(& self._buffer)
 
                 # Get a new one.
                 buffer_size = lib.avpicture_get_size(format, width, height)
-                with gil: err_check(buffer_size)
+                with gil:
+                    err_check(buffer_size)
 
-                self._buffer = <uint8_t *>lib.av_malloc(buffer_size)
+                self._buffer = <uint8_t * >lib.av_malloc(buffer_size)
 
                 if not self._buffer:
-                    with gil: raise MemoryError("cannot allocate VideoFrame buffer")
+                    with gil:
+                        raise MemoryError("cannot allocate VideoFrame buffer")
 
                 # Attach the AVPicture to our buffer.
                 lib.avpicture_fill(
-                        <lib.AVPicture *>self.ptr,
-                        self._buffer,
-                        format,
-                        width,
-                        height
+                    < lib.AVPicture * >self.ptr,
+                    self._buffer,
+                    format,
+                    width,
+                    height
                 )
 
         self._init_user_attributes()
@@ -72,11 +73,11 @@ cdef class VideoFrame(Frame):
         return self.format.ptr.nb_components
 
     cdef _init_user_attributes(self):
-        self.format = get_video_format(<lib.AVPixelFormat>self.ptr.format, self.ptr.width, self.ptr.height)
+        self.format = get_video_format(< lib.AVPixelFormat > self.ptr.format, self.ptr.width, self.ptr.height)
         self._init_planes(VideoPlane)
 
     def __dealloc__(self):
-        lib.av_freep(&self._buffer)
+        lib.av_freep(& self._buffer)
 
     def __repr__(self):
         return '<av.%s #%d, %s %dx%d at 0x%x>' % (
@@ -137,7 +138,7 @@ cdef class VideoFrame(Frame):
         if self.ptr.format < 0:
             raise ValueError("Frame does not have format set.")
 
-        cdef lib.AVPixelFormat src_format = <lib.AVPixelFormat> self.ptr.format
+        cdef lib.AVPixelFormat src_format = <lib.AVPixelFormat > self.ptr.format
 
         # Shortcut!
         if (
@@ -154,7 +155,8 @@ cdef class VideoFrame(Frame):
 
         # Try and reuse existing SwsContextProxy
         # VideoStream.decode will copy its SwsContextProxy to VideoFrame
-        # So all Video frames from the same VideoStream should have the same one
+        # So all Video frames from the same VideoStream should have the same
+        # one
         with nogil:
             self.reformatter.ptr = lib.sws_getCachedContext(
                 self.reformatter.ptr,
@@ -170,17 +172,18 @@ cdef class VideoFrame(Frame):
                 NULL
             )
 
-        cdef int *inv_tbl, *tbl, *rgbTbl
+        cdef int * inv_tbl, *tbl, *rgbTbl
         cdef int srcRange, dstRange, brightness, contrast, saturation
         cdef int ret
         with nogil:
-            ret = lib.sws_getColorspaceDetails(self.reformatter.ptr, &inv_tbl, &srcRange, &tbl, &dstRange, &brightness, &contrast, &saturation)
+            ret = lib.sws_getColorspaceDetails(self.reformatter.ptr, & inv_tbl, & srcRange, & tbl, & dstRange, & brightness, & contrast, & saturation)
             if not ret < 0:
                 if src_colorspace != lib.SWS_CS_DEFAULT:
                     inv_tbl = lib.sws_getCoefficients(src_colorspace)
                 if dst_colorspace != lib.SWS_CS_DEFAULT:
                     tbl = lib.sws_getCoefficients(dst_colorspace)
-                lib.sws_setColorspaceDetails(self.reformatter.ptr, inv_tbl, srcRange, tbl, dstRange, brightness, contrast, saturation)
+                lib.sws_setColorspaceDetails(
+                    self.reformatter.ptr, inv_tbl, srcRange, tbl, dstRange, brightness, contrast, saturation)
 
         # Create a new VideoFrame.
         cdef VideoFrame frame = alloc_video_frame()
@@ -193,7 +196,7 @@ cdef class VideoFrame(Frame):
                 self.reformatter.ptr,
                 self.ptr.data,
                 self.ptr.linesize,
-                0, # slice Y
+                0,  # slice Y
                 self.ptr.height,
                 frame.ptr.data,
                 frame.ptr.linesize,
@@ -203,14 +206,17 @@ cdef class VideoFrame(Frame):
 
     property width:
         """Width of the image, in pixels."""
+
         def __get__(self): return self.ptr.width
 
     property height:
         """Height of the image, in pixels."""
+
         def __get__(self): return self.ptr.height
 
     property key_frame:
         """Is this frame a key frame?"""
+
         def __get__(self): return self.ptr.key_frame
 
     def to_rgb(self, **kwargs):
@@ -245,7 +251,8 @@ cdef class VideoFrame(Frame):
 
         cdef VideoFrame frame = self.reformat(**kwargs)
         if len(frame.planes) != 1:
-            raise ValueError('Cannot conveniently get numpy array from multiplane frame')
+            raise ValueError(
+                'Cannot conveniently get numpy array from multiplane frame')
 
         import numpy as np
 
@@ -256,7 +263,8 @@ cdef class VideoFrame(Frame):
         if frame.format.name == ('gray16le', 'gray16be'):
             return np.frombuffer(frame.planes[0], np.dtype('<u2')).reshape(frame.height, frame.width)
         else:
-            raise ValueError("Cannot conveniently get numpy array from %s format" % frame.format.name)
+            raise ValueError(
+                "Cannot conveniently get numpy array from %s format" % frame.format.name)
 
     def to_qimage(self, **kwargs):
         """Get an RGB ``QImage`` of this frame.
@@ -270,7 +278,7 @@ cdef class VideoFrame(Frame):
         from sip import voidptr
 
         cdef VideoFrame rgb = self.reformat(format='rgb24', **kwargs)
-        ptr = voidptr(<long><void*>rgb.ptr.extended_data[0])
+        ptr = voidptr(< long > <void*>rgb.ptr.extended_data[0])
 
         return rgb, QImage(ptr, rgb.ptr.width, rgb.ptr.height, QImage.Format_RGB888)
 

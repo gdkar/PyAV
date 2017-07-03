@@ -1,4 +1,4 @@
 cimport libav as lib
 
 cdef class VideoReformatter(object):
-    cdef lib.SwsContext *ptr
+    cdef lib.SwsContext * ptr

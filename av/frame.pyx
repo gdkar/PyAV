@@ -3,7 +3,7 @@ from libc.limits cimport INT_MAX
 from cpython cimport Py_INCREF, PyTuple_New, PyTuple_SET_ITEM
 
 from av.plane cimport Plane
-from av.utils cimport avrational_to_faction, to_avrational
+from av.utils cimport avrational_to_fraction, to_avrational
 
 from fractions import Fraction
 
@@ -20,7 +20,7 @@ cdef class Frame(object):
         with nogil:
             # This calls av_frame_unref, and then frees the pointer.
             # Thats it.
-            lib.av_frame_free(&self.ptr)
+            lib.av_frame_free( & self.ptr)
 
     def __repr__(self):
         return 'av.%s #%d at 0x%x>' % (
@@ -66,7 +66,7 @@ cdef class Frame(object):
             self.ptr.channels = source.ptr.channels
 
     cdef _init_user_attributes(self):
-        pass # Dummy to match the API of the others.
+        pass  # Dummy to match the API of the others.
 
     cdef _rebase_time(self, lib.AVRational dst):
 
@@ -88,7 +88,6 @@ cdef class Frame(object):
 
         self._time_base = dst
 
-
     property dts:
         def __get__(self):
             if self.ptr.pkt_dts == lib.AV_NOPTS_VALUE:
@@ -100,6 +99,7 @@ cdef class Frame(object):
             if self.ptr.pts == lib.AV_NOPTS_VALUE:
                 return None
             return self.ptr.pts
+
         def __set__(self, value):
             if value is None:
                 self.ptr.pts = lib.AV_NOPTS_VALUE
@@ -116,6 +116,7 @@ cdef class Frame(object):
     property time_base:
         def __get__(self):
             if self._time_base.num:
-                return avrational_to_faction(&self._time_base)
+                return avrational_to_fraction( & self._time_base)
+
         def __set__(self, value):
-            to_avrational(value, &self._time_base)
+            to_avrational(value, & self._time_base)

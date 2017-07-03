@@ -11,7 +11,7 @@ cdef class AudioResampler(object):
 
     cdef readonly bint is_passthrough
 
-    cdef lib.SwrContext *ptr
+    cdef lib.SwrContext * ptr
 
     cdef AudioFrame template
 

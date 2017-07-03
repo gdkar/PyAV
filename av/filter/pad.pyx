@@ -50,8 +50,8 @@ cdef class FilterContextPad(FilterPad):
         def __get__(self):
             if self._link:
                 return self._link
-            cdef lib.AVFilterLink **links = self.context.ptr.inputs if self.is_input else self.context.ptr.outputs
-            cdef lib.AVFilterLink *link = links[self.index]
+            cdef lib.AVFilterLink ** links = self.context.ptr.inputs if self.is_input else self.context.ptr.outputs
+            cdef lib.AVFilterLink * link = links[self.index]
             if not link:
                 return
             self._link = wrap_filter_link(self.context.graph, link)
@@ -64,7 +64,7 @@ cdef class FilterContextPad(FilterPad):
                 return link.input if self.is_input else link.output
 
 
-cdef tuple alloc_filter_pads(Filter filter, lib.AVFilterPad *ptr, bint is_input, FilterContext context=None):
+cdef tuple alloc_filter_pads(Filter filter, lib.AVFilterPad * ptr, bint is_input, FilterContext context=None):
 
     if not ptr:
         return ()
@@ -78,7 +78,8 @@ cdef tuple alloc_filter_pads(Filter filter, lib.AVFilterPad *ptr, bint is_input,
 
     cdef FilterPad pad
     while (i < count or count < 0) and lib.avfilter_pad_get_name(ptr, i):
-        pad = FilterPad(_cinit_sentinel) if context is None else FilterContextPad(_cinit_sentinel)
+        pad = FilterPad(_cinit_sentinel) if context is None else FilterContextPad(
+            _cinit_sentinel)
         pads.append(pad)
         pad.filter = filter
         pad.context = context

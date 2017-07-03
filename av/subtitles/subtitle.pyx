@@ -3,7 +3,7 @@ from cpython cimport PyBuffer_FillInfo
 
 cdef class SubtitleProxy(object):
     def __dealloc__(self):
-        lib.avsubtitle_free(&self.struct)
+        lib.avsubtitle_free(& self.struct)
 
 
 cdef class SubtitleSet(object):
@@ -11,7 +11,8 @@ cdef class SubtitleSet(object):
     def __cinit__(self, SubtitleProxy proxy):
         self.proxy = proxy
         cdef int i
-        self.rects = tuple(build_subtitle(self, i) for i in range(self.proxy.struct.num_rects))
+        self.rects = tuple(build_subtitle(self, i)
+                           for i in range(self.proxy.struct.num_rects))
 
     def __repr__(self):
         return '<%s.%s at 0x%x>' % (
@@ -49,7 +50,7 @@ cdef Subtitle build_subtitle(SubtitleSet subtitle, int index):
 
     if index < 0 or index >= subtitle.proxy.struct.num_rects:
         raise ValueError('subtitle rect index out of range')
-    cdef lib.AVSubtitleRect *ptr = subtitle.proxy.struct.rects[index]
+    cdef lib.AVSubtitleRect * ptr = subtitle.proxy.struct.rects[index]
 
     if ptr.type == lib.SUBTITLE_NONE:
         return Subtitle(subtitle, index)
@@ -143,36 +144,34 @@ cdef class BitmapSubtitlePlane(object):
         self.subtitle = subtitle
         self.index = index
         self.buffer_size = subtitle.ptr.w * subtitle.ptr.h
-        self._buffer = <void*>subtitle.ptr.pict.data[index]
+        self._buffer = <void * >subtitle.ptr.pict.data[index]
 
     # PyBuffer_FromMemory(self.ptr.pict.data[i], self.width * self.height)
 
     # Legacy buffer support. For `buffer` and PIL.
     # See: http://docs.python.org/2/c-api/typeobj.html#PyBufferProcs
 
-    def __getsegcount__(self, Py_ssize_t *len_out):
+    def __getsegcount__(self, Py_ssize_t * len_out):
         if len_out != NULL:
-            len_out[0] = <Py_ssize_t>self.buffer_size
+            len_out[0] = <Py_ssize_t > self.buffer_size
         return 1
 
-    def __getreadbuffer__(self, Py_ssize_t index, void **data):
+    def __getreadbuffer__(self, Py_ssize_t index, void ** data):
         if index:
             raise RuntimeError("accessing non-existent buffer segment")
         data[0] = self._buffer
-        return <Py_ssize_t>self.buffer_size
+        return < Py_ssize_t > self.buffer_size
 
-    def __getwritebuffer__(self, Py_ssize_t index, void **data):
+    def __getwritebuffer__(self, Py_ssize_t index, void ** data):
         if index:
             raise RuntimeError("accessing non-existent buffer segment")
         data[0] = self._buffer
-        return <Py_ssize_t>self.buffer_size
-
+        return < Py_ssize_t > self.buffer_size
 
     # New-style buffer support.
 
-    def __getbuffer__(self, Py_buffer *view, int flags):
+    def __getbuffer__(self, Py_buffer * view, int flags):
         PyBuffer_FillInfo(view, self, self._buffer, self.buffer_size, 0, flags)
-
 
 
 cdef class TextSubtitle(Subtitle):

@@ -27,8 +27,9 @@ cdef class VideoFormat(object):
 
         cdef VideoFormat other
         if isinstance(name, VideoFormat):
-            other = <VideoFormat>name
-            self._init(other.pix_fmt, width or other.width, height or other.height)
+            other = <VideoFormat > name
+            self._init(other.pix_fmt, width or other.width,
+                       height or other.height)
             return
 
         cdef lib.AVPixelFormat pix_fmt = lib.av_get_pix_fmt(name)
@@ -63,31 +64,41 @@ cdef class VideoFormat(object):
 
     property name:
         """Canonical name of the pixel format."""
+
         def __get__(self):
-            return <str>self.ptr.name
+            return < str > self.ptr.name
 
     property is_big_endian:
         """Pixel format is big-endian."""
+
         def __get__(self): return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_BE)
 
     property has_palette:
         """Pixel format has a palette in data[1], values are indexes in this palette."""
-        def __get__(self): return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_PAL)
+
+        def __get__(self): return bool(
+            self.ptr.flags & lib.AV_PIX_FMT_FLAG_PAL)
 
     property is_bit_stream:
         """All values of a component are bit-wise packed end to end."""
-        def __get__(self): return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_BITSTREAM)
+
+        def __get__(self): return bool(
+            self.ptr.flags & lib.AV_PIX_FMT_FLAG_BITSTREAM)
 
     # Skipping PIX_FMT_HWACCEL
     # """Pixel format is an HW accelerated format."""
 
     property is_planar:
         """At least one pixel component is not in the first data plane."""
-        def __get__(self): return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_PLANAR)
+
+        def __get__(self): return bool(
+            self.ptr.flags & lib.AV_PIX_FMT_FLAG_PLANAR)
 
     property is_rgb:
         """The pixel format contains RGB-like data (as opposed to YUV/grayscale)."""
-        def __get__(self): return bool(self.ptr.flags & lib.AV_PIX_FMT_FLAG_RGB)
+
+        def __get__(self): return bool(
+            self.ptr.flags & lib.AV_PIX_FMT_FLAG_RGB)
 
     cpdef chroma_width(self, int luma_width=0):
         """chroma_width(luma_width=0)
@@ -112,7 +123,6 @@ cdef class VideoFormat(object):
         return -((-luma_height) >> self.ptr.log2_chroma_h) if luma_height else 0
 
 
-
 cdef class VideoFormatComponent(object):
 
     def __cinit__(self, VideoFormat format, size_t index):
@@ -122,22 +132,26 @@ cdef class VideoFormatComponent(object):
 
     property plane:
         """The index of the plane which contains this component."""
+
         def __get__(self):
             return self.ptr.plane
 
     property bits:
         """Number of bits in the component."""
+
         def __get__(self):
-            return self.ptr.depth_minus1 + 1
+            return self.ptr.depth
 
     property is_alpha:
         """Is this component an alpha channel?"""
+
         def __get__(self):
             return ((self.index == 1 and self.format.ptr.nb_components == 2) or
                     (self.index == 3 and self.format.ptr.nb_components == 4))
 
     property is_luma:
         """Is this compoment a luma channel?"""
+
         def __get__(self):
             return self.index == 0 and (
                 self.format.ptr.nb_components == 1 or
@@ -147,6 +161,7 @@ cdef class VideoFormatComponent(object):
 
     property is_chroma:
         """Is this component a chroma channel?"""
+
         def __get__(self):
             return (self.index == 1 or self.index == 2) and (self.format.ptr.log2_chroma_w or self.format.ptr.log2_chroma_h)
 
@@ -156,6 +171,7 @@ cdef class VideoFormatComponent(object):
         Requires the parent :class:`VideoFormat` to have a width.
 
         """
+
         def __get__(self):
             return self.format.chroma_width() if self.is_chroma else self.format.width
 
@@ -165,12 +181,13 @@ cdef class VideoFormatComponent(object):
         Requires the parent :class:`VideoFormat` to have a height.
 
         """
+
         def __get__(self):
             return self.format.chroma_height() if self.is_chroma else self.format.height
 
 
 names = set()
-cdef lib.AVPixFmtDescriptor *desc = NULL
+cdef lib.AVPixFmtDescriptor * desc = NULL
 while True:
     desc = lib.av_pix_fmt_desc_next(desc)
     if not desc:

@@ -10,7 +10,7 @@ from av.codec.codec cimport Codec, wrap_codec
 from av.dictionary cimport _Dictionary
 from av.dictionary import Dictionary
 from av.packet cimport Packet
-from av.utils cimport err_check, avdict_to_dict, avrational_to_faction, to_avrational, media_type_to_string
+from av.utils cimport err_check, avdict_to_dict, avrational_to_fraction, to_avrational, media_type_to_string
 
 
 cdef object _cinit_sentinel = object()
@@ -168,20 +168,20 @@ cdef class CodecContext(object):
                 used = lib.av_parser_parse2(
                     self.parser,
                     self.ptr,
-                    &packet.struct.data, &packet.struct.size,
+                    &packet._ptr.data, &packet._ptr.size,
                     self.parse_buffer + base, self.parse_buffer_size - base,
                     0, 0,
                     self.parse_pos
                 )
             err_check(used)
 
-            if packet.struct.size:
+            if packet._ptr.size:
                 packets.append(packet)
             if used:
                 self.parse_pos += used
                 base += used
 
-            if not (used or packet.struct.size):
+            if not (used or packet._ptr.size):
                 break
 
         if base:
@@ -210,8 +210,15 @@ cdef class CodecContext(object):
 
         cdef Frame frame
 
-        cdef lib.AVPacket *packet_ptr = &packet.struct if packet else NULL
-        err_check(lib.avcodec_send_packet(self.ptr, packet_ptr))
+        cdef lib.AVPacket *packet_ptr = packet._ptr if packet else NULL
+        cdef int err = 0
+        with nogil:
+            err = lib.avcodec_send_packet(self.ptr, packet_ptr)
+        if err == lib.AVERROR_EOF and packet_ptr != NULL:
+            with nogil:
+                lib.avcodec_flush_buffers(self.ptr)
+                err = lib.avcodec_send_packet(self.ptr, packet_ptr)
+        err_check(err)
 
         res = []
         while True:
@@ -248,7 +255,7 @@ cdef class CodecContext(object):
 
         cdef Packet packet = Packet()
 
-        cdef int res = lib.avcodec_receive_packet(self.ptr, &packet.struct)
+        cdef int res = lib.avcodec_receive_packet(self.ptr, packet._ptr)
         if res == -EAGAIN or res == lib.AVERROR_EOF:
             return
         err_check(res)
@@ -346,21 +353,21 @@ cdef class CodecContext(object):
         cdef int data_consumed = 0
         cdef list decoded_objs = []
 
-        cdef uint8_t *original_data = packet.struct.data
-        cdef int      original_size = packet.struct.size
+        cdef uint8_t *original_data = packet._ptr.data
+        cdef int      original_size = packet._ptr.size
 
-        cdef bint is_flushing = not (packet.struct.data and packet.struct.size)
+        cdef bint is_flushing = not (packet._ptr.data and packet._ptr.size)
 
         # Keep decoding while there is data in this packet.
-        while is_flushing or packet.struct.size > 0:
+        while is_flushing or packet._ptr.size > 0:
 
             if is_flushing:
-                packet.struct.data = NULL
-                packet.struct.size = 0
+                packet._ptr.data = NULL
+                packet._ptr.size = 0
 
-            decoded = self._decode(&packet.struct, &data_consumed)
-            packet.struct.data += data_consumed
-            packet.struct.size -= data_consumed
+            decoded = self._decode(packet._ptr, &data_consumed)
+            packet._ptr.data += data_consumed
+            packet._ptr.size -= data_consumed
 
             if decoded:
 
@@ -382,8 +389,8 @@ cdef class CodecContext(object):
                 break
 
         # Restore the packet.
-        packet.struct.data = original_data
-        packet.struct.size = original_size
+        packet._ptr.data = original_data
+        packet._ptr.size = original_size
 
         return decoded_objs
 
@@ -427,7 +434,7 @@ cdef class CodecContext(object):
 
     property time_base:
         def __get__(self):
-            return avrational_to_faction(&self.ptr.time_base)
+            return avrational_to_fraction(&self.ptr.time_base)
         def __set__(self, value):
             to_avrational(value, &self.ptr.time_base)
 

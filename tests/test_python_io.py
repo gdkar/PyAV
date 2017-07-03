@@ -31,7 +31,7 @@ class TestPythonIO(TestCase):
         # Make sure it did actually call "read".
         reads = wrapped._filter('read')
         self.assertTrue(reads)
-
+        fh.close()
     def test_basic_errors(self):
         self.assertRaises(Exception, av.open, None)
         self.assertRaises(Exception, av.open, None, 'w')
@@ -39,7 +39,7 @@ class TestPythonIO(TestCase):
     def test_writing(self):
 
         path = self.sandboxed('writing.mov')
-        fh = open(path, 'wb')
+        fh = open(path, 'w')
         wrapped = MethodLogger(fh)
 
         output = av.open(wrapped, 'w')
@@ -50,13 +50,14 @@ class TestPythonIO(TestCase):
         self.assertTrue(writes)
 
         # Standard assertions.
-        assert_rgb_rotate(self, av.open(path))
-
+        assert_rgb_rotate(self, av.open(path,'r'))
+        fh.close()
     def test_buffer_read_write(self):
 
         buffer_ = StringIO()
         wrapped = MethodLogger(buffer_)
         write_rgb_rotate(av.open(wrapped, 'w', 'mp4'))
+#            av.open(wrapped, 'w', 'mp4'))
 
         # Make sure it did actually write.
         writes = wrapped._filter('write')

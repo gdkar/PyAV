@@ -2,8 +2,12 @@
 cdef extern from "libavfilter/avfiltergraph.h" nogil:
 
     cdef struct AVFilterGraph:
-        int nb_filters
         AVFilterContext **filters
+        int nb_filters
+        int thread_type
+        int nb_threads
+
+
 
     cdef struct AVFilterInOut:
         char *name
@@ -48,4 +52,11 @@ cdef extern from "libavfilter/avfiltergraph.h" nogil:
 
     cdef char* avfilter_graph_dump(AVFilterGraph *graph, const char *options)
 
+    cdef int avfilter_graph_request_oldest(AVFilterGraph *graph)
+
     cdef void avfilter_inout_free(AVFilterInOut **inout_list)
+
+    cdef int avfilter_graph_send_command(AVFilterGraph *graph, const char *target, const char *cmd, const char *arg, char *res, int res_len, int flags)
+
+    cdef int avfilter_graph_queue_command(AVFilterGraph *graph, const char *target, const char *cmd, const char *arg, int flags, double ts)
+

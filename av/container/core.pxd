@@ -11,7 +11,7 @@ from av.stream cimport Stream
 cdef class ContainerProxy(object):
 
     cdef bint writeable
-    cdef lib.AVFormatContext *ptr
+    cdef lib.AVFormatContext * ptr
 
     cdef seek(self, int stream_index, offset, str whence, bint backward, bint any_frame)
     cdef flush_buffers(self)
@@ -26,9 +26,9 @@ cdef class ContainerProxy(object):
     cdef object ftell
 
     # Custom IO for above.
-    cdef lib.AVIOContext *iocontext
+    cdef lib.AVIOContext * iocontext
     cdef long bufsize
-    cdef unsigned char *buffer
+    cdef unsigned char * buffer
     cdef long pos
     cdef bint pos_is_valid
 

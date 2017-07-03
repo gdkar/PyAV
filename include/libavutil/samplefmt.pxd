@@ -61,3 +61,4 @@ cdef extern from "libavutil/samplefmt.h" nogil:
         int nb_channels,
         AVSampleFormat sample_fmt
     )
+

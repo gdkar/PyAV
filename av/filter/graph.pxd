@@ -5,7 +5,7 @@ from av.filter.context cimport FilterContext
 
 cdef class Graph(object):
 
-    cdef lib.AVFilterGraph *ptr
+    cdef lib.AVFilterGraph * ptr
 
     cdef readonly bint configured
     cpdef configure(self, bint auto_buffer=*, bint force=*)

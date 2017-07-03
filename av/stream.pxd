@@ -14,19 +14,19 @@ cdef class Stream(object):
     cdef ContainerProxy _container
     cdef _weak_container
 
-    cdef lib.AVStream *_stream
+    cdef lib.AVStream * _stream
     cdef readonly dict metadata
 
     # CodecContext attributes.
-    cdef lib.AVCodecContext *_codec_context
-    cdef lib.AVCodec *_codec
-    cdef lib.AVDictionary *_codec_options
+    cdef lib.AVCodecContext * _codec_context
+    cdef lib.AVCodec * _codec
+    cdef lib.AVDictionary * _codec_options
 
     cdef readonly CodecContext codec_context
 
     # Private API.
-    cdef _init(self, Container, lib.AVStream*)
+    cdef _init(self, Container, lib.AVStream *)
     cdef _finalize_for_output(self)
 
 
-cdef Stream wrap_stream(Container, lib.AVStream*)
+cdef Stream wrap_stream(Container, lib.AVStream *)

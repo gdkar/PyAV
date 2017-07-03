@@ -10,9 +10,9 @@ cdef class Descriptor(object):
     # - AVOutputFormat.priv_class
     # - AVInputFormat.priv_class
 
-    cdef lib.AVClass *ptr
+    cdef lib.AVClass * ptr
 
-    cdef object _options # Option list cache.
+    cdef object _options  # Option list cache.
 
 
-cdef Descriptor wrap_avclass(lib.AVClass*)
+cdef Descriptor wrap_avclass(lib.AVClass *)

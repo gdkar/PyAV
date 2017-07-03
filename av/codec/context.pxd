@@ -10,7 +10,7 @@ from av.packet cimport Packet
 
 cdef class CodecContext(object):
 
-    cdef lib.AVCodecContext *ptr
+    cdef lib.AVCodecContext * ptr
 
     cdef ContainerProxy container
 
@@ -19,13 +19,13 @@ cdef class CodecContext(object):
     # this object.
     cdef int stream_index
 
-    cdef lib.AVCodecParserContext *parser
-    cdef unsigned char *parse_buffer
+    cdef lib.AVCodecParserContext * parser
+    cdef unsigned char * parse_buffer
     cdef size_t parse_buffer_size
     cdef size_t parse_buffer_max_size
     cdef size_t parse_pos
 
-    cdef _init(self, lib.AVCodecContext *ptr, lib.AVCodec *codec)
+    cdef _init(self, lib.AVCodecContext * ptr, lib.AVCodec * codec)
 
     cdef readonly Codec codec
 
@@ -48,7 +48,7 @@ cdef class CodecContext(object):
 
     # Implemented by children for the encode/decode API.
     cdef _encode(self, Frame frame)
-    cdef _decode(self, lib.AVPacket *packet, int *data_consumed)
+    cdef _decode(self, lib.AVPacket * packet, int * data_consumed)
 
     # Implemented by base for the generic send/recv API.
     # Note that the user cannot send without recieving. This is because
@@ -67,4 +67,4 @@ cdef class CodecContext(object):
     cdef Frame _alloc_next_frame(self)
 
 
-cdef CodecContext wrap_codec_context(lib.AVCodecContext*, lib.AVCodec*, ContainerProxy)
+cdef CodecContext wrap_codec_context(lib.AVCodecContext * , lib.AVCodec*, ContainerProxy)

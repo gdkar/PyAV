@@ -19,17 +19,19 @@ from av.logging cimport _get_last_error
 cdef int AV_ERROR_MAX_STRING_SIZE = 64
 
 # Our custom error.
-cdef int PYAV_ERROR = -0x50794156 # 'PyAV'
+cdef int PYAV_ERROR = -0x50794156  # 'PyAV'
 
 
 class AVError(EnvironmentError):
     """Exception class for errors from within the underlying FFmpeg/Libav."""
+
     def __init__(self, code, message, filename=None, error_log=None):
         if filename:
             super(AVError, self).__init__(code, message, filename)
         else:
             super(AVError, self).__init__(code, message)
         self.error_log = error_log
+
     def __str__(self):
         strerror = super(AVError, self).__str__()
         if self.error_log:
@@ -79,8 +81,7 @@ cdef int err_check(int res=0, str filename=None) except -1:
         return res
 
     cdef bytes py_buffer
-    cdef char *c_buffer
-
+    cdef char * c_buffer
 
     if res == PYAV_ERROR:
         py_buffer = b'Error in PyAV callback'
@@ -107,40 +108,39 @@ cdef int err_check(int res=0, str filename=None) except -1:
     return res
 
 
-
 # === DICTIONARIES ===
 # ====================
 
 
-cdef dict avdict_to_dict(lib.AVDictionary *input):
+cdef dict avdict_to_dict(lib.AVDictionary * input):
 
-    cdef lib.AVDictionaryEntry *element = NULL
+    cdef lib.AVDictionaryEntry * element = NULL
     cdef dict output = {}
     while True:
-        element = lib.av_dict_get(input, "", element, lib.AV_DICT_IGNORE_SUFFIX)
+        element = lib.av_dict_get(
+            input, "", element, lib.AV_DICT_IGNORE_SUFFIX)
         if element == NULL:
             break
         output[element.key] = element.value
     return output
 
 
-cdef dict_to_avdict(lib.AVDictionary **dst, dict src, bint clear=True):
+cdef dict_to_avdict(lib.AVDictionary ** dst, dict src, bint clear=True):
     if clear:
         lib.av_dict_free(dst)
-    for key, value in src.iteritems():
+    for key, value in src.items():
         err_check(lib.av_dict_set(dst, key, value, 0))
-
 
 
 # === FRACTIONS ===
 # =================
 
-cdef object avrational_to_faction(lib.AVRational *input):
+cdef object avrational_to_fraction(lib.AVRational * input):
     if input.num and input.den:
         return Fraction(input.num, input.den)
 
 
-cdef object to_avrational(object value, lib.AVRational *input):
+cdef object to_avrational(object value, lib.AVRational * input):
 
     if value is None:
         input.num = 0
@@ -156,9 +156,8 @@ cdef object to_avrational(object value, lib.AVRational *input):
     input.den = frac.denominator
 
 
-cdef object av_frac_to_fraction(lib.AVFrac *input):
+cdef object av_frac_to_fraction(lib.AVFrac * input):
     return Fraction(input.val * input.num, input.den)
-
 
 
 # === OTHER ===

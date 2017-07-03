@@ -178,7 +178,7 @@ cdef class Container(object):
         if not self.writeable and not isinstance(self, InputContainer):
             raise RuntimeError('Container cannot be extended except')
 
-        if isinstance(file_, basestring):
+        if isinstance(file_, (str,bytes)):
             self.name = file_
         else:
             self.name = str(getattr(file_, 'name', None))
@@ -220,7 +220,7 @@ def open(file, mode=None, format=None, options=None):
     if mode is None:
         mode = getattr(file, 'mode', None)
     if mode is None:
-        mode = 'r'
+        mode = 'rb'
 
     if mode.startswith('r'):
         return InputContainer(_cinit_sentinel, file, format, options)

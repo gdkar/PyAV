@@ -10,17 +10,18 @@ cdef class Plane(Buffer):
 
     property line_size:
         """Bytes per horizontal line in this plane."""
+
         def __get__(self):
             return self.frame.ptr.linesize[self.index]
 
     property ptr:
         def __get__(self):
-            return <long>self.frame.ptr.extended_data[self.index]
+            return < long > self.frame.ptr.extended_data[self.index]
 
     cdef size_t _buffer_size(self):
         return self.frame.ptr.linesize[self.index]
 
-    cdef void*  _buffer_ptr(self):
+    cdef void * _buffer_ptr(self):
         return self.frame.ptr.extended_data[self.index]
 
     def update(self, input):

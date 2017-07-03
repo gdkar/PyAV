@@ -1,14 +1,10 @@
-from __future__ import print_function
 """
 Note this example only really works accurately on constant frame rate media.
 """
-from PyQt4 import QtGui
-from PyQt4 import QtCore
-from PyQt4.QtCore import Qt
 
+from qtproxy import Q
 import sys
 import av
-
 
 AV_TIME_BASE = 1000000
 
@@ -16,32 +12,44 @@ def pts_to_frame(pts, time_base, frame_rate, start_time):
     return int(pts * time_base * frame_rate) - int(start_time * time_base * frame_rate)
 
 def get_frame_rate(stream):
-
     if stream.average_rate.denominator and stream.average_rate.numerator:
         return float(stream.average_rate)
     if stream.time_base.denominator and stream.time_base.numerator:
-        return 1.0 / float(stream.time_base)
-    else:
-        raise ValueError("Unable to determine FPS")
+        return 1.0/float(stream.time_base)
+    else: raise ValueError("Unable to determine FPS")
 
 def get_frame_count(f, stream):
+    if stream.frames:     return stream.frames
+    elif stream.duration: return pts_to_frame(stream.duration, float(stream.time_base), get_frame_rate(stream), 0)
+    elif f.duration:      return pts_to_frame(f.duration, 1/float(AV_TIME_BASE), get_frame_rate(stream), 0)
+    else:                 raise ValueError("Unable to determine number for frames")
 
-    if stream.frames:
-        return stream.frames
-    elif stream.duration:
-        return pts_to_frame(stream.duration, float(stream.time_base), get_frame_rate(stream), 0)
-    elif f.duration:
-        return pts_to_frame(f.duration, 1 / float(AV_TIME_BASE), get_frame_rate(stream), 0)
+class FrameGrabber(Q.QObject):
+    frame_ready = Q.pyqtSignal(object, object)
+    update_frame_range = Q.pyqtSignal(object,object)
+    _skip_limit = 4
+    _cache_limit = 64
+    _seek_accuracy = 0
 
-    else:
-        raise ValueError("Unable to determine number for frames")
+    @property
+    def skip_limit(self):
+        return self._skip_limit
 
-class FrameGrabber(QtCore.QObject):
+    @skip_limit.setter
+    def skip_limit(self,val):
+        val = int(val)
+        if self._skip_limit != val:
+            print("setting skip limit to {}".format(val))
+            self._skip_limit = int(val)
 
-    frame_ready = QtCore.pyqtSignal(object, object)
-    update_frame_range = QtCore.pyqtSignal(object)
+    @property
+    def cache_limit(self):
+        return self._cache_limit
+    @cache_limit.setter
+    def cache_limit(self,val):
+        self._cache_limit = int(val)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent =None):
         super(FrameGrabber, self).__init__(parent)
         self.file = None
         self.stream = None
@@ -50,57 +58,47 @@ class FrameGrabber(QtCore.QObject):
         self.start_time = 0
         self.pts_seen = False
         self.nb_frames = None
-
+        self.frame_cache=dict()
+        self.frame_gen = None
+        self.last_seen=-1
+        self.last_shown=-1
         self.rate = None
         self.time_base = None
 
     def next_frame(self):
-
         frame_index = None
-
         rate = self.rate
         time_base = self.time_base
-
         self.pts_seen = False
-
         for packet in self.file.demux(self.stream):
-            #print "    pkt", packet.pts, packet.dts, packet
+            #print("    pkt", packet.pts, packet.dts, packet)
             if packet.pts:
                 self.pts_seen = True
-
-            for frame in packet.decode():
-
+            frames = packet.decode()
+            for frame in frames:
                 if frame_index is None:
-
                     if self.pts_seen:
                         pts = frame.pts
-                    else:
-                        pts = frame.dts
-
+                    else:pts = frame.dts
                     if not pts is None:
                         frame_index = pts_to_frame(pts, time_base, rate, self.start_time)
-
                 elif not frame_index is None:
                     frame_index += 1
-
-
+                self.frame_cache[frame_index] = frame
                 yield frame_index, frame
 
-
-    @QtCore.pyqtSlot(object)
+    @Q.pyqtSlot(object)
     def request_frame(self, target_frame):
-
         frame = self.get_frame(target_frame)
         if not frame:
             return
-
-        rgba = frame.reformat(frame.width, frame.height, "rgb24", 'itu709')
-        #print rgba.to_image().save("test.png")
+        rgba = frame.reformat(frame.width, frame.height, "rgba", 'itu709')
+        #print(rgba.to_image().save("test.png"))
         # could use the buffer interface here instead, some versions of PyQt don't support it for some reason
         # need to track down which version they added support for it
         self.frame = bytearray(rgba.planes[0])
-        bytesPerPixel = 3
-        img = QtGui.QImage(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, QtGui.QImage.Format_RGB888)
+        bytesPerPixel  = 4
+        img = Q.QImage(self.frame, rgba.width, rgba.height, rgba.width * bytesPerPixel, Q.QImage.Format_RGBA8888)
 
         #img = QtGui.QImage(rgba.planes[0], rgba.width, rgba.height, QtGui.QImage.Format_RGB888)
 
@@ -108,85 +106,94 @@ class FrameGrabber(QtCore.QObject):
         self.frame_ready.emit(img, target_frame)
 
     def get_frame(self, target_frame):
-
         if target_frame != self.active_frame:
             return
-        print('seeking to', target_frame)
+        if target_frame in self.frame_cache:
+            return self.frame_cache[target_frame]
+        keylist = list(sorted(self.frame_cache.keys()))
+        while len(self.frame_cache) > self.cache_limit and keylist and keylist[0] + self.skip_limit < target_frame:
+            if target_frame != self.active_frame:
+                return
+            del self.frame_cache[keylist.pop(0)]
 
+        keylist = list(sorted(self.frame_cache.keys()))
+        if ((not keylist) or target_frame>keylist[0] and
+            (not self.frame_gen or target_frame < self.last_seen + self.skip_limit)):
+            if not self.frame_gen:
+                self.frame_gen = self.next_frame()
+                self.frame_cache.clear()
+            for i, (frame_index, frame) in enumerate(self.frame_gen):
+                self.last_seen = frame_index
+                if frame_index > target_frame or i >= self.skip_limit:
+                    break
+                if target_frame in self.frame_cache:
+                    return self.frame_cache[target_frame]
+#                if frame_index == target_frame:
+#                    return frame
+        print(('seeking to', target_frame))
         seek_frame = target_frame
-
         rate = self.rate
         time_base = self.time_base
-
         frame = None
         reseek = 250
-
         original_target_frame_pts = None
-
         while reseek >= 0:
-
             # convert seek_frame to pts
-            target_sec = seek_frame * 1 / rate
+            target_sec = seek_frame * 1/rate
             target_pts = int(target_sec / time_base) + self.start_time
-
             if original_target_frame_pts is None:
                 original_target_frame_pts = target_pts
-
-            self.stream.seek(int(target_pts))
-
+            self.stream.seek(int(target_pts), backward=seek_frame < self.last_seen)
+            self.frame_cache.clear()
             frame_index = None
-
-            frame_cache = []
-
-            for i, (frame_index, frame) in enumerate(self.next_frame()):
-
+#            for index in list(self.frame_cache.keys()):
+#                if abs(index-target_frame>1024):
+#                    del self.frame_cache[index]
+            if self.frame_gen:
+                self.frame_gen.close()
+            self.frame_gen = self.next_frame()
+            for i, (frame_index, frame) in enumerate(self.frame_gen):
+#                self.frame_cache[frame_index] = frame
+                self.last_seen = frame_index
+                if len(self.frame_cache) == 1:
+                    self._seek_accuracy = max(self._seek_accuracy,abs(frame.pts - target_pts))
+                    self.skip_limit = max(self.skip_limit, int(self._seek_accuracy * rate * time_base))
                 # optimization if the time slider has changed, the requested frame no longer valid
                 if target_frame != self.active_frame:
                     return
-
-                print("   ", i, "at frame", frame_index, "at ts:", frame.pts, frame.dts, "target:", target_pts, 'orig', original_target_frame_pts)
-
+                print(("   ", i, "at frame", frame_index, "at ts:", frame.pts,frame.dts,"target:", target_pts, 'orig', original_target_frame_pts))
+                if frame_index == target_frame:
+                    return frame
                 if frame_index is None:
                     pass
-
                 elif frame_index >= target_frame:
                     break
-
-                frame_cache.append(frame)
-
             # Check if we over seeked, if we over seekd we need to seek to a earlier time
             # but still looking for the target frame
             if frame_index != target_frame:
-
                 if frame_index is None:
                     over_seek = '?'
                 else:
                     over_seek = frame_index - target_frame
                     if frame_index > target_frame:
-
-                        print(over_seek, frame_cache)
-                        if over_seek <= len(frame_cache):
-                            print("over seeked by %i, using cache" % over_seek)
-                            frame = frame_cache[-over_seek]
-                            break
-
+                        if target_frame in self.frame_cache:
+                            return self.frame_cache[target_frame]
+                        print((over_seek, self.frame_cache))
+                        break
 
                 seek_frame -= 1
                 reseek -= 1
-                print("over seeked by %s, backtracking.. seeking: %i target: %i retry: %i" % (str(over_seek), seek_frame, target_frame, reseek))
+                print(("over seeked by %s, backtracking.. seeking: %i target: %i retry: %i" % (str(over_seek),  seek_frame, target_frame, reseek)))
 
             else:
                 break
 
         if reseek < 0:
             raise ValueError("seeking failed %i" % frame_index)
-
         # frame at this point should be the correct frame
 
         if frame:
-
             return frame
-
         else:
             raise ValueError("seeking failed %i" % target_frame)
 
@@ -197,9 +204,9 @@ class FrameGrabber(QtCore.QObject):
         if self.stream.frames:
             frame_count = self.stream.frames
         elif self.stream.duration:
-            frame_count = pts_to_frame(self.stream.duration, float(self.stream.time_base), get_frame_rate(self.stream), 0)
+            frame_count =  pts_to_frame(self.stream.duration, float(self.stream.time_base), get_frame_rate(self.stream), 0)
         elif self.file.duration:
-            frame_count = pts_to_frame(self.file.duration, 1 / float(AV_TIME_BASE), get_frame_rate(self.stream), 0)
+            frame_count = pts_to_frame(self.file.duration, 1/float(AV_TIME_BASE), get_frame_rate(self.stream), 0)
         else:
             raise ValueError("Unable to determine number for frames")
 
@@ -208,32 +215,34 @@ class FrameGrabber(QtCore.QObject):
         retry = 100
 
         while retry:
-            target_sec = seek_frame * 1 / self.rate
+            target_sec = seek_frame * 1/ self.rate
             target_pts = int(target_sec / self.time_base) + self.start_time
 
-            self.stream.seek(int(target_pts))
+            self.stream.seek(int(target_pts),backward=True)
 
             frame_index = None
 
             for frame_index, frame in self.next_frame():
-                print(frame_index, frame)
-                continue
+                print((frame_index, frame))
+#                continue
 
             if not frame_index is None:
                 break
             else:
-                seek_frame -= 1
+                seek_frame -= 64
                 retry -= 1
 
 
-        print("frame count seeked", frame_index, "container frame count", frame_count)
+        print(("frame count seeked", frame_index, "container frame count", frame_count))
 
         return frame_index or frame_count
 
-    @QtCore.pyqtSlot(object)
+    @Q.pyqtSlot(object)
     def set_file(self, path):
         self.file = av.open(path)
-        self.stream = next(s for s in self.file.streams if s.type == b'video')
+#        for s in filter(lambda x: x.type == 'video',self.file.streams):
+#            self.stream = s
+        self.stream = next(s for s in self.file.streams if s.type == 'video')
         self.rate = get_frame_rate(self.stream)
         self.time_base = float(self.stream.time_base)
 
@@ -251,29 +260,25 @@ class FrameGrabber(QtCore.QObject):
 
         self.start_time = pts or first_frame.dts
 
-        print("First pts", pts, self.stream.start_time, first_frame)
+        print(("First pts", pts, self.stream.start_time, first_frame))
 
         #self.nb_frames = get_frame_count(self.file, self.stream)
         self.nb_frames = self.get_frame_count()
 
-        self.update_frame_range.emit(self.nb_frames)
+        self.update_frame_range.emit(self.nb_frames, self.rate)
 
-
-
-
-
-class DisplayWidget(QtGui.QLabel):
+class DisplayWidget(Q.QLabel):
     def __init__(self, parent=None):
         super(DisplayWidget, self).__init__(parent)
         #self.setScaledContents(True)
-        self.setMinimumSize(1920 / 10, 1080 / 10)
+        self.setMinimumSize(1920/10, 1080/10)
 
-        size_policy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        size_policy = Q.QSizePolicy(Q.QSizePolicy.Preferred, Q.QSizePolicy.Preferred)
         size_policy.setHeightForWidth(True)
 
         self.setSizePolicy(size_policy)
 
-        self.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+        self.setAlignment(Q.AlignHCenter| Q.AlignBottom)
 
         self.pixmap = None
         self.setMargin(10)
@@ -281,39 +286,39 @@ class DisplayWidget(QtGui.QLabel):
     def heightForWidth(self, width):
         return width * 9 / 16.0
 
-    @QtCore.pyqtSlot(object, object)
+    @Q.pyqtSlot(object, object)
     def setPixmap(self, img, index):
         #if index == self.current_index:
-        self.pixmap = QtGui.QPixmap.fromImage(img)
+        self.pixmap = Q.QPixmap.fromImage(img)
 
         #super(DisplayWidget, self).setPixmap(self.pixmap)
-        super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Q.KeepAspectRatio, Q.SmoothTransformation))
 
     def sizeHint(self):
         width = self.width()
-        return QtCore.QSize(width, self.heightForWidth(width))
+        return Q.QSize(width, self.heightForWidth(width))
 
     def resizeEvent(self, event):
         if self.pixmap:
-            super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            super(DisplayWidget, self).setPixmap(self.pixmap.scaled(self.size(), Q.KeepAspectRatio, Q.SmoothTransformation))
 
     def sizeHint(self):
-        return QtCore.QSize(1920 / 2.5, 1080 / 2.5)
+        return Q.QSize(1920/2.5,1080/2.5)
 
 
-class VideoPlayerWidget(QtGui.QWidget):
+class VideoPlayerWidget(Q.QWidget):
 
-    request_frame = QtCore.pyqtSignal(object)
+    request_frame = Q.pyqtSignal(object)
 
-    load_file = QtCore.pyqtSignal(object)
+    load_file = Q.pyqtSignal(object)
 
     def __init__(self, parent=None):
         super(VideoPlayerWidget, self).__init__(parent)
         self.display = DisplayWidget()
-        self.timeline = QtGui.QScrollBar(Qt.Horizontal)
+        self.timeline = Q.QScrollBar(Q.Horizontal)
         self.frame_grabber = FrameGrabber()
 
-        self.frame_control = QtGui.QSpinBox()
+        self.frame_control = Q.QSpinBox()
         self.frame_control.setFixedWidth(100)
 
         self.timeline.valueChanged.connect(self.frame_changed)
@@ -325,69 +330,72 @@ class VideoPlayerWidget(QtGui.QWidget):
         self.frame_grabber.frame_ready.connect(self.display.setPixmap)
         self.frame_grabber.update_frame_range.connect(self.set_frame_range)
 
-        self.frame_grabber_thread = QtCore.QThread()
+        self.frame_grabber_thread = Q.QThread()
 
         self.frame_grabber.moveToThread(self.frame_grabber_thread)
         self.frame_grabber_thread.start()
 
-        control_layout = QtGui.QHBoxLayout()
+        control_layout = Q.QHBoxLayout()
         control_layout.addWidget(self.frame_control)
         control_layout.addWidget(self.timeline)
 
-        layout = QtGui.QVBoxLayout()
+        layout = Q.QVBoxLayout()
         layout.addWidget(self.display)
         layout.addLayout(control_layout)
         self.setLayout(layout)
         self.setAcceptDrops(True)
-
+        self.timer = Q.QTimer()
+        self.timer.setTimerType(Q.PreciseTimer)
+        self.timer.timeout.connect(self.autoTick)
     def set_file(self, path):
         #self.frame_grabber.set_file(path)
         self.load_file.emit(path)
         self.frame_changed(0)
 
-    @QtCore.pyqtSlot(object)
-    def set_frame_range(self, maximum):
-        print("frame range =", maximum)
+    @Q.pyqtSlot(object,object)
+    def set_frame_range(self, maximum, rate):
+        print(("frame range =", maximum))
         self.timeline.setMaximum(maximum)
         self.frame_control.setMaximum(maximum)
+        self.timer.setInterval(1000/rate)
+        self.timer.start()
 
     def frame_changed(self, value):
         self.timeline.blockSignals(True)
         self.frame_control.blockSignals(True)
-
         self.timeline.setValue(value)
         self.frame_control.setValue(value)
-
         self.timeline.blockSignals(False)
         self.frame_control.blockSignals(False)
-
         #self.display.current_index = value
         self.frame_grabber.active_frame = value
-
         self.request_frame.emit(value)
 
+    def autoTick(self):
+        self.timeline.setValue(self.timeline.value()+1)
+
     def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Right, Qt.Key_Left):
+        if event.key() in (Q.Key_Right, Q.Key_Left):
             direction = 1
-            if event.key() == Qt.Key_Left:
+            if event.key() == Q.Key_Left:
                 direction = -1
 
-            if event.modifiers() == Qt.ShiftModifier:
+            if event.modifiers() == Q.ShiftModifier:
                 print('shift')
                 direction *= 10
 
             self.timeline.setValue(self.timeline.value() + direction)
 
         else:
-            super(VideoPlayerWidget, self).keyPressEvent(event)
+            super(VideoPlayerWidget,self).keyPressEvent(event)
 
     def mousePressEvent(self, event):
         # clear focus of spinbox
-        focused_widget = QtGui.QApplication.focusWidget()
+        focused_widget = Q.QApplication.focusWidget()
         if focused_widget:
             focused_widget.clearFocus()
 
-        super(VideoPlayerWidget, self).mousePressEvent(event)
+        super(VideoPlayerWidget,self).mousePressEvent(event)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -401,6 +409,7 @@ class VideoPlayerWidget(QtGui.QWidget):
         if mime.hasUrls():
             path = str(mime.urls()[0].path())
             self.set_file(path)
+
     def closeEvent(self, event):
 
         self.frame_grabber.active_frame = -1
@@ -411,7 +420,7 @@ class VideoPlayerWidget(QtGui.QWidget):
 
 
 if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
+    app = Q.QApplication(sys.argv)
     window = VideoPlayerWidget()
     test_file = sys.argv[1]
     window.set_file(test_file)

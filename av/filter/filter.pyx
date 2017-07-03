@@ -7,7 +7,7 @@ from av.filter.pad cimport alloc_filter_pads
 cdef object _cinit_sentinel = object()
 
 
-cdef Filter wrap_filter(lib.AVFilter *ptr):
+cdef Filter wrap_filter(lib.AVFilter * ptr):
     cdef Filter filter_ = Filter(_cinit_sentinel)
     filter_.ptr = ptr
     return filter_
@@ -59,12 +59,13 @@ cdef class Filter(object):
     property outputs:
         def __get__(self):
             if self._outputs is None:
-                self._outputs = alloc_filter_pads(self, self.ptr.outputs, False)
+                self._outputs = alloc_filter_pads(
+                    self, self.ptr.outputs, False)
             return self._outputs
 
 
 filters_available = set()
-cdef lib.AVFilter *ptr = lib.avfilter_next(NULL)
+cdef lib.AVFilter * ptr = lib.avfilter_next(NULL)
 while ptr:
     filters_available.add(ptr.name)
     ptr = lib.avfilter_next(ptr)

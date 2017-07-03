@@ -7,7 +7,7 @@ from av.bytesource cimport ByteSource
 
 cdef class Packet(Buffer):
 
-    cdef lib.AVPacket struct
+    cdef lib.AVPacket *_ptr
 
     cdef Stream _stream
 
@@ -18,4 +18,8 @@ cdef class Packet(Buffer):
     # Hold onto the original reference.
     cdef ByteSource source
     cdef size_t _buffer_size(self)
-    cdef void*  _buffer_ptr(self)
+    cdef void * _buffer_ptr(self)
+
+    cpdef Packet copy(self)
+    cpdef void ref(self, Packet other)
+    cpdef void unref(self)
